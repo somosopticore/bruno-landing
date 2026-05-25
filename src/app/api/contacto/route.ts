@@ -13,15 +13,21 @@ export async function POST(request: Request) {
     }
 
     const {
-      userName,
+      nombre,
+      restaurante,
       whatsapp,
       email,
       mensaje = "",
+      reservas_semana = "",
+      interes = "",
     } = body;
 
     // Server-side validation
-    if (!userName || !userName.trim()) {
+    if (!nombre || !nombre.trim()) {
       return NextResponse.json({ error: "Tu nombre es requerido." }, { status: 400 });
+    }
+    if (!restaurante || !restaurante.trim()) {
+      return NextResponse.json({ error: "El nombre del restaurante es requerido." }, { status: 400 });
     }
     if (!whatsapp || !whatsapp.trim()) {
       return NextResponse.json({ error: "El número de WhatsApp es requerido." }, { status: 400 });
@@ -30,13 +36,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "El correo electrónico es requerido." }, { status: 400 });
     }
 
-    // Basic email format check
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       return NextResponse.json({ error: "El correo electrónico no es válido." }, { status: 400 });
     }
 
-    // Check webhook URL
     const webhookUrl = process.env.WEBHOOK_BRUNO_CONTACTO_URL;
     if (!webhookUrl) {
       console.error("WEBHOOK_BRUNO_CONTACTO_URL no está configurada.");
@@ -46,17 +50,17 @@ export async function POST(request: Request) {
       );
     }
 
-    // Relay to webhook
     const response = await fetch(webhookUrl, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        userName: userName.trim(),
+        nombre: nombre.trim(),
+        restaurante: restaurante.trim(),
         whatsapp: whatsapp.trim(),
         email: email.trim(),
         mensaje: mensaje.trim(),
+        reservas_semana: reservas_semana,
+        interes: interes,
         submittedAt: new Date().toISOString(),
         referrer: request.headers.get("referer") || "direct",
       }),
