@@ -38,7 +38,6 @@ interface ChatMessage {
 // Types for form values
 interface FormValues {
   nombre: string;
-  restaurante: string;
   whatsapp: string;
   email: string;
   mensaje: string;
@@ -244,7 +243,6 @@ export default function BrunoLanding() {
   // Form
   const [formValues, setFormValues] = useState<FormValues>({
     nombre: "",
-    restaurante: "",
     whatsapp: "",
     email: "",
     mensaje: "",
@@ -391,9 +389,6 @@ export default function BrunoLanding() {
     const errors: Partial<FormValues> = {};
     if (!formValues.nombre.trim()) {
       errors.nombre = "Tu nombre es requerido.";
-    }
-    if (!formValues.restaurante.trim()) {
-      errors.restaurante = "El nombre del restaurante es requerido.";
     }
     if (!formValues.whatsapp.trim()) {
       errors.whatsapp = "El WhatsApp es requerido.";
@@ -1164,27 +1159,6 @@ export default function BrunoLanding() {
                     )}
                   </div>
 
-                  {/* Restaurante */}
-                  <div>
-                    <label htmlFor="restaurante" className="block text-xs font-semibold uppercase tracking-wider text-text-secundario mb-2">
-                      Nombre de tu restaurante *
-                    </label>
-                    <input
-                      type="text"
-                      id="restaurante"
-                      name="restaurante"
-                      required
-                      value={formValues.restaurante}
-                      onChange={handleInputChange}
-                      className={`w-full bg-[#1A0F0A] border rounded px-4 py-3 text-sm text-text-primario focus:outline-none focus:border-acento-primario transition-colors ${
-                        formErrors.restaurante ? "border-error" : "border-border-sutil"
-                      }`}
-                      placeholder="Ej. La Esquina de Bruno"
-                    />
-                    {formErrors.restaurante && (
-                      <p className="text-xs text-error mt-1.5">{formErrors.restaurante}</p>
-                    )}
-                  </div>
 
                   {/* WhatsApp */}
                   <div>
