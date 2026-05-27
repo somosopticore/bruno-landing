@@ -39,6 +39,11 @@ export const onboardingSchema = z.object({
   
   audio_transcription: z.boolean(),
   voice_calls: z.boolean(),
+  comments: z
+    .string()
+    .trim()
+    .max(1000, "El comentario no puede superar los 1000 caracteres")
+    .optional(),
 });
 
 export type OnboardingData = z.infer<typeof onboardingSchema>;

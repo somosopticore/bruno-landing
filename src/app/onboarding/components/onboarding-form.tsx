@@ -37,6 +37,7 @@ export const OnboardingForm: React.FC = () => {
       admin_numbers: [""],
       audio_transcription: true,
       voice_calls: false,
+      comments: "",
     },
   });
 
@@ -112,6 +113,34 @@ export const OnboardingForm: React.FC = () => {
     try {
       const response = await submitOnboarding(data);
       if (response.success) {
+        // Guardar submission en localStorage
+        try {
+          const submissionsStr = localStorage.getItem("bruno_onboarding_submissions_v1");
+          let submissions = [];
+          if (submissionsStr) {
+            submissions = JSON.parse(submissionsStr);
+          }
+          const newSubmission = {
+            id: String(Date.now()),
+            name: data.business_name,
+            slug: data.business_name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+            environments: data.environments,
+            status: "ACTIVO",
+            reservationsToday: 0,
+            adminNumbers: data.admin_numbers,
+            audioTranscription: data.audio_transcription,
+            voiceCalls: data.voice_calls,
+            businessHours: data.business_hours,
+            menu: data.menu,
+            comments: data.comments || "",
+            submittedAt: new Date().toISOString(),
+          };
+          submissions.push(newSubmission);
+          localStorage.setItem("bruno_onboarding_submissions_v1", JSON.stringify(submissions));
+        } catch (err) {
+          console.error("Error saving submission:", err);
+        }
+
         // Limpiar borrador local al tener éxito
         localStorage.removeItem("bruno_onboarding_draft_v1");
         

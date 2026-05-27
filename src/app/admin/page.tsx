@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Store,
@@ -18,7 +18,17 @@ import {
   MapPin,
   X,
   CheckCircle2,
-  AlertTriangle
+  AlertTriangle,
+  Lock,
+  MessageSquare,
+  Copy,
+  Download,
+  Check,
+  Clock,
+  Mic,
+  Calendar,
+  Loader2,
+  FileText
 } from "lucide-react";
 import { toast, Toaster } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -26,7 +36,7 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 
-// Datos iniciales de los clientes del multi-tenant
+// Datos iniciales ampliados de los clientes del multi-tenant
 interface Restaurant {
   id: string;
   name: string;
@@ -37,6 +47,11 @@ interface Restaurant {
   adminNumbers: string[];
   audioTranscription: boolean;
   voiceCalls: boolean;
+  businessHours?: string;
+  menu?: string;
+  comments?: string;
+  submittedAt?: string;
+  isUserSubmitted?: boolean;
 }
 
 const INITIAL_RESTAURANTS: Restaurant[] = [
@@ -50,6 +65,9 @@ const INITIAL_RESTAURANTS: Restaurant[] = [
     adminNumbers: ["5493514567890"],
     audioTranscription: true,
     voiceCalls: true,
+    businessHours: "Martes a Domingos de 20:00 a 00:00 hs.\nLunes cerrado.",
+    menu: "[ENTRADAS]\n- Provoleta Moyo: Con tomates confitados, pesto de rúcula y almendras tostadas. $8.500\n- Empanada Criolla: De carne cortada a cuchillo, frita, bien jugosa. $2.200\n\n[PRINCIPALES]\n- Ojo de Bife 400g: Con papas rústicas y manteca de chimichurri. Cocción sugerida: a punto. $18.900\n- Ravioles de Cordero: Con salsa demiglace de hongos de pino y verdeo. $15.500\n\n[BEBIDAS & VINOS]\n- Malbec Gran Reserva Moyo (Copa / Botella): $3.500 / $14.000\n- Limonada casera con menta y jengibre: $3.000",
+    comments: "Instalación estándar sin requerimientos especiales. Todo funcionando OK.",
   },
   {
     id: "2",
@@ -61,6 +79,9 @@ const INITIAL_RESTAURANTS: Restaurant[] = [
     adminNumbers: ["5493517890123"],
     audioTranscription: true,
     voiceCalls: false,
+    businessHours: "Lunes a Lunes de 19:30 a 23:30 hs.",
+    menu: "[PIZZAS CLÁSICAS]\n- Muzzarella: Salsa de tomate, muzzarella, aceitunas. $7.200\n- Fugazzeta: Muzzarella, cebolla caramelizada, orégano. $7.800\n- Margarita: Muzzarella, rodajas de tomate, albahaca fresca. $8.000\n\n[CERVEZAS]\n- IPA Tirada Moyo (Pinta): $2.500\n- Golden Tirada Moyo (Pinta): $2.200",
+    comments: "El cliente solicitó prioridad para reservas en mesas de Patio.",
   },
   {
     id: "3",
@@ -72,6 +93,9 @@ const INITIAL_RESTAURANTS: Restaurant[] = [
     adminNumbers: ["5493518901234"],
     audioTranscription: true,
     voiceCalls: true,
+    businessHours: "Miércoles a Lunes de 12:00 a 16:00 hs y de 20:00 a 00:30 hs. Martes cerrado.",
+    menu: "[MINUTAS]\n- Milanesa Napolitana gigante con papas fritas (para compartir): $16.500\n- Suprema a la Suiza con puré: $13.900\n\n[POSTRES]\n- Flan Mixto (Con dulce de leche y crema): $3.000\n- Vigilante (Queso y dulce de membrillo o batata): $2.500",
+    comments: "El administrador principal quiere notificaciones directas por cada reserva superior a 6 cubiertos.",
   },
   {
     id: "4",
@@ -83,20 +107,101 @@ const INITIAL_RESTAURANTS: Restaurant[] = [
     adminNumbers: ["5493519012345"],
     audioTranscription: false,
     voiceCalls: false,
+    businessHours: "Jueves a Sábados de 19:00 a 03:00 hs. Domingos de 18:00 a 01:00 hs.",
+    menu: "[PLATITOS]\n- Buñuelos de acelga con alioli: $4.200\n- Croquetas de jamón crudo y muzzarella: $4.800\n\n[TRAGOS & VERMUT]\n- Vermut de la casa con sifón: $1.800\n- Negroni Lunfardo: $3.200",
+    comments: "Servicio pausado temporalmente por reformas en el local.",
   },
 ];
 
 export default function AdminDashboard() {
+  const [mounted, setMounted] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [password, setPassword] = useState("");
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [shakeTrigger, setShakeTrigger] = useState(false);
+
   const [restaurants, setRestaurants] = useState<Restaurant[]>(INITIAL_RESTAURANTS);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"TODOS" | "ACTIVO" | "PAUSADO">("TODOS");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
-  // Estados para nuevo restaurante
+  // Estados para nuevo restaurante manual
   const [newName, setNewName] = useState("");
   const [newSlug, setNewSlug] = useState("");
   const [newAdmins, setNewAdmins] = useState("");
   const [selectedEnvironments, setSelectedEnvironments] = useState<string[]>(["Salón"]);
+
+  // Ficha detallada de cliente
+  const [selectedRestaurant, setSelectedRestaurant] = useState<Restaurant | null>(null);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+
+  // Manejo de montaje y sesión en cliente
+  useEffect(() => {
+    setMounted(true);
+    if (sessionStorage.getItem("opticore_admin_authed") === "true") {
+      setIsAuthenticated(true);
+    }
+
+    // Cargar submissions de localStorage
+    try {
+      const submissionsStr = localStorage.getItem("bruno_onboarding_submissions_v1");
+      if (submissionsStr) {
+        const submissions = JSON.parse(submissionsStr);
+        const formattedSubmissions = submissions.map((sub: any) => ({
+          id: sub.id,
+          name: sub.name,
+          slug: sub.slug,
+          environments: sub.environments || [],
+          status: sub.status || "ACTIVO",
+          reservationsToday: sub.reservationsToday || 0,
+          adminNumbers: sub.adminNumbers || [],
+          audioTranscription: sub.audioTranscription ?? true,
+          voiceCalls: sub.voiceCalls ?? false,
+          businessHours: sub.businessHours || "No especificado",
+          menu: sub.menu || "",
+          comments: sub.comments || "",
+          submittedAt: sub.submittedAt || new Date().toISOString(),
+          isUserSubmitted: true,
+        }));
+        setRestaurants([...INITIAL_RESTAURANTS, ...formattedSubmissions]);
+      }
+    } catch (err) {
+      console.error("Error al cargar submissions de localStorage:", err);
+    }
+  }, []);
+
+  // Acciones de autenticación
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoggingIn(true);
+
+    setTimeout(() => {
+      const correctPassword = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || "OpticoreBruno2026!";
+      if (password === correctPassword) {
+        sessionStorage.setItem("opticore_admin_authed", "true");
+        setIsAuthenticated(true);
+        toast.success("Acceso concedido", {
+          description: "Bienvenido al panel central de Opticore.",
+        });
+      } else {
+        toast.error("Contraseña incorrecta", {
+          description: "Por favor, verificá las credenciales de administrador.",
+        });
+        setShakeTrigger(true);
+        setTimeout(() => setShakeTrigger(false), 500);
+      }
+      setIsLoggingIn(false);
+    }, 600);
+  };
+
+  const handleLogout = () => {
+    sessionStorage.removeItem("opticore_admin_authed");
+    setIsAuthenticated(false);
+    setPassword("");
+    toast.info("Sesión cerrada", {
+      description: "Has salido del panel de administración.",
+    });
+  };
 
   // Filtrado de restaurantes
   const filteredRestaurants = useMemo(() => {
@@ -119,7 +224,6 @@ export default function AdminDashboard() {
   }, [restaurants]);
 
   const iaEfficiency = useMemo(() => {
-    // Si no hay activos, retorna 0, de lo contrario un promedio dinámico premium
     const active = restaurants.filter((r) => r.status === "ACTIVO");
     if (active.length === 0) return "0.0%";
     const total = active.reduce((sum, r) => sum + (r.voiceCalls ? 99.6 : 99.2), 0);
@@ -134,6 +238,23 @@ export default function AdminDashboard() {
           const nextStatus = r.status === "ACTIVO" ? "PAUSADO" : "ACTIVO";
           const nextReservations = nextStatus === "PAUSADO" ? 0 : Math.floor(Math.random() * 20) + 10;
           
+          // Sincronizar con localStorage si es onboarding
+          try {
+            const submissionsStr = localStorage.getItem("bruno_onboarding_submissions_v1");
+            if (submissionsStr) {
+              const submissions = JSON.parse(submissionsStr);
+              const updatedSubmissions = submissions.map((sub: any) => {
+                if (sub.id === id) {
+                  return { ...sub, status: nextStatus };
+                }
+                return sub;
+              });
+              localStorage.setItem("bruno_onboarding_submissions_v1", JSON.stringify(updatedSubmissions));
+            }
+          } catch (err) {
+            console.error("Error al actualizar estado en localStorage:", err);
+          }
+
           toast(nextStatus === "ACTIVO" ? "Bot Reanudado" : "Bot Suspendido", {
             description: `Se ha cambiado el estado de ${r.name} a ${nextStatus}.`,
             icon: nextStatus === "ACTIVO" ? (
@@ -164,7 +285,7 @@ export default function AdminDashboard() {
     }
 
     const newClient: Restaurant = {
-      id: String(restaurants.length + 1),
+      id: String(Date.now()),
       name: newName.trim(),
       slug: newSlug.trim().toLowerCase().replace(/\s+/g, "-"),
       environments: selectedEnvironments,
@@ -173,7 +294,25 @@ export default function AdminDashboard() {
       adminNumbers: newAdmins.split(",").map((n) => n.trim()),
       audioTranscription: true,
       voiceCalls: false,
+      businessHours: "Martes a Domingos de 20:00 a 00:00 hs.\nLunes cerrado.",
+      menu: "Carta vacía. Configurada manualmente desde el panel.",
+      comments: "Registrado manualmente en consola de administración.",
+      submittedAt: new Date().toISOString(),
+      isUserSubmitted: true
     };
+
+    // Guardar en localStorage también para simular la BD manual
+    try {
+      const submissionsStr = localStorage.getItem("bruno_onboarding_submissions_v1");
+      let submissions = [];
+      if (submissionsStr) {
+        submissions = JSON.parse(submissionsStr);
+      }
+      submissions.push(newClient);
+      localStorage.setItem("bruno_onboarding_submissions_v1", JSON.stringify(submissions));
+    } catch (err) {
+      console.error(err);
+    }
 
     setRestaurants([...restaurants, newClient]);
     setIsAddModalOpen(false);
@@ -191,6 +330,19 @@ export default function AdminDashboard() {
 
   const handleDeleteRestaurant = (id: string, name: string) => {
     setRestaurants(restaurants.filter((r) => r.id !== id));
+    
+    // Borrar de localStorage si corresponde
+    try {
+      const submissionsStr = localStorage.getItem("bruno_onboarding_submissions_v1");
+      if (submissionsStr) {
+        const submissions = JSON.parse(submissionsStr);
+        const filtered = submissions.filter((sub: any) => sub.id !== id);
+        localStorage.setItem("bruno_onboarding_submissions_v1", JSON.stringify(filtered));
+      }
+    } catch (err) {
+      console.error(err);
+    }
+
     toast.error("Cliente Eliminado", {
       description: `Se dio de baja a ${name} del sistema central.`,
     });
@@ -204,6 +356,99 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleExportJSON = (restaurant: Restaurant) => {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(restaurant, null, 2));
+    const downloadAnchor = document.createElement("a");
+    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute("download", `optibruno-${restaurant.slug}.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+    toast.success("Ficha Exportada", {
+      description: "Se descargaron los datos del cliente en formato JSON.",
+    });
+  };
+
+  if (!mounted) {
+    return (
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
+      </div>
+    );
+  }
+
+  // --- RENDERIZADO DEL LOGIN GATE ---
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-zinc-950 text-zinc-100 font-sans flex items-center justify-center relative overflow-hidden px-4">
+        {/* Glows de fondo */}
+        <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] rounded-full bg-indigo-600/5 blur-[150px] pointer-events-none" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] rounded-full bg-blue-600/5 blur-[150px] pointer-events-none" />
+
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="w-full max-w-[400px] z-10"
+        >
+          <motion.div
+            animate={shakeTrigger ? { x: [-10, 10, -10, 10, 0] } : {}}
+            transition={{ duration: 0.4 }}
+          >
+            <Card className="bg-zinc-900/60 border-zinc-800 p-8 backdrop-blur-xl shadow-2xl relative overflow-hidden">
+              <div className="flex flex-col items-center text-center space-y-4 mb-6">
+                <div className="h-12 w-12 bg-indigo-600 flex items-center justify-center rounded-xl shadow-[0_0_20px_rgba(99,102,241,0.5)]">
+                  <Lock className="w-6 h-6 text-white" />
+                </div>
+                <div className="space-y-1">
+                  <h1 className="text-xl font-bold text-zinc-100 tracking-wide flex items-center justify-center gap-1.5">
+                    Opticore Central
+                    <span className="text-[9px] bg-zinc-800 px-1.5 py-0.5 rounded text-zinc-400 font-mono">ADMIN</span>
+                  </h1>
+                  <p className="text-xs text-zinc-400">
+                    Ingresá tus credenciales de la agencia.
+                  </p>
+                </div>
+              </div>
+
+              <form onSubmit={handleLogin} className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="password">Contraseña de acceso</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    required
+                    placeholder="Contraseña"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="bg-zinc-950 border-zinc-800 text-sm h-11 text-zinc-100 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                  />
+                </div>
+
+                <Button
+                  type="submit"
+                  disabled={isLoggingIn}
+                  className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold h-11 shadow-[0_4px_15px_rgba(99,102,241,0.35)] active:scale-98 cursor-pointer"
+                >
+                  {isLoggingIn ? (
+                    <Loader2 className="w-4 h-4 animate-spin mx-auto" />
+                  ) : (
+                    "Acceder al panel"
+                  )}
+                </Button>
+              </form>
+
+              <div className="text-[10px] text-center text-zinc-500 mt-6 border-t border-zinc-800/60 pt-4">
+                Seguridad reforzada · Bruno Bot Management
+              </div>
+            </Card>
+          </motion.div>
+        </motion.div>
+      </div>
+    );
+  }
+
+  // --- RENDERIZADO DEL DASHBOARD AUTENTICADO ---
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 font-sans flex flex-col relative overflow-hidden">
       <Toaster theme="dark" richColors closeButton />
@@ -237,7 +482,12 @@ export default function AdminDashboard() {
             Sistemas en línea
           </div>
 
-          <Button variant="ghost" size="sm" className="text-zinc-400 hover:text-zinc-100 h-9 px-3 gap-1.5">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={handleLogout}
+            className="text-zinc-400 hover:text-zinc-100 h-9 px-3 gap-1.5 cursor-pointer"
+          >
             <LogOut className="w-4 h-4" />
             <span className="hidden md:inline">Salir</span>
           </Button>
@@ -260,7 +510,7 @@ export default function AdminDashboard() {
 
           <Button
             onClick={() => setIsAddModalOpen(true)}
-            className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold h-11 px-5 shadow-[0_4px_15px_rgba(99,102,241,0.35)] active:scale-98"
+            className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold h-11 px-5 shadow-[0_4px_15px_rgba(99,102,241,0.35)] active:scale-98 cursor-pointer"
           >
             <Plus className="w-4 h-4 mr-2" />
             Agregar Restaurante
@@ -349,7 +599,6 @@ export default function AdminDashboard() {
             Restaurantes Clientes Multi-Tenant ({filteredRestaurants.length})
           </h3>
 
-          {/* Desktop Grid Layout */}
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
             <AnimatePresence mode="popLayout">
               {filteredRestaurants.map((client) => {
@@ -369,9 +618,16 @@ export default function AdminDashboard() {
                       {/* Top Header Card */}
                       <div className="flex justify-between items-start gap-4">
                         <div className="space-y-1">
-                          <h4 className="font-serif text-xl font-bold text-white tracking-tight group-hover:text-indigo-400 transition-colors">
-                            {client.name}
-                          </h4>
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-serif text-xl font-bold text-white tracking-tight group-hover:text-indigo-400 transition-colors">
+                              {client.name}
+                            </h4>
+                            {client.isUserSubmitted && (
+                              <span className="px-2 py-0.5 bg-indigo-500/10 border border-indigo-500/20 text-[9px] font-bold text-indigo-400 rounded">
+                                Onboarding
+                              </span>
+                            )}
+                          </div>
                           <div className="flex items-center gap-1.5 text-xs text-zinc-400 font-mono">
                             <span>/{client.slug}</span>
                           </div>
@@ -432,12 +688,26 @@ export default function AdminDashboard() {
 
                         {/* Actions buttons */}
                         <div className="flex items-center gap-2 self-end sm:self-center">
+                          {/* Ver Ficha Detallada */}
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedRestaurant(client);
+                              setIsDetailsOpen(true);
+                            }}
+                            className="h-8 px-3 text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 hover:text-white cursor-pointer"
+                          >
+                            <Sliders className="w-3.5 h-3.5 text-indigo-400" />
+                            Ver Ficha
+                          </Button>
+
                           {/* Toggle bot status button */}
                           <Button
                             variant="secondary"
                             size="sm"
                             onClick={() => handleToggleStatus(client.id)}
-                            className="h-8 px-3 text-[10px] font-black uppercase tracking-wider flex items-center gap-1 hover:text-white"
+                            className="h-8 px-3 text-[10px] font-black uppercase tracking-wider flex items-center gap-1 hover:text-white cursor-pointer"
                           >
                             {isActive ? (
                               <>
@@ -474,7 +744,7 @@ export default function AdminDashboard() {
             {filteredRestaurants.length === 0 && (
               <div className="col-span-full border border-dashed border-zinc-800 rounded-xl p-12 text-center text-zinc-500">
                 <Store className="w-8 h-8 mx-auto mb-2 text-zinc-600" />
-                Ningún restaurante coincide con el filtro de búsqueda.
+                Ningún restaurante coincide con el filtro de búsqueda o base de datos.
               </div>
             )}
           </div>
@@ -497,11 +767,327 @@ export default function AdminDashboard() {
         </p>
       </footer>
 
-      {/* ADD NEW RESTAURANT MODAL */}
+      {/* DETALLE DE CLIENTE (FICHA COMPLETA) */}
+      <AnimatePresence>
+        {isDetailsOpen && selectedRestaurant && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsDetailsOpen(false)}
+              className="absolute inset-0 bg-black/85 backdrop-blur-sm"
+            />
+
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 15 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 15 }}
+              className="relative w-full max-w-[650px] max-h-[85vh] bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl overflow-y-auto p-6 z-10 scrollbar-thin"
+            >
+              <button
+                onClick={() => setIsDetailsOpen(false)}
+                className="absolute top-4 right-4 text-zinc-400 hover:text-zinc-200 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              {/* Title & Status */}
+              <div className="flex flex-wrap items-center justify-between gap-4 mb-6 border-b border-zinc-800 pb-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-serif text-2xl font-bold text-white tracking-tight">
+                      {selectedRestaurant.name}
+                    </h3>
+                    {selectedRestaurant.isUserSubmitted && (
+                      <span className="px-2 py-0.5 bg-indigo-500/10 border border-indigo-500/30 text-[9px] font-black uppercase tracking-wider text-indigo-400 rounded">
+                        Onboarding
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-zinc-400 font-mono">
+                    ID: {selectedRestaurant.id} · slug: /{selectedRestaurant.slug}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                    selectedRestaurant.status === "ACTIVO"
+                      ? "bg-emerald-500/10 border border-emerald-500/30 text-emerald-400"
+                      : "bg-rose-500/10 border border-rose-500/30 text-rose-400"
+                  }`}>
+                    {selectedRestaurant.status}
+                  </span>
+                </div>
+              </div>
+
+              {/* Content Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                
+                {/* Left Side details */}
+                <div className="space-y-5">
+                  {/* Business Hours */}
+                  <div className="space-y-1.5">
+                    <h4 className="text-xs font-bold text-zinc-400 flex items-center gap-2 uppercase tracking-wider">
+                      <Clock className="w-3.5 h-3.5 text-indigo-400" />
+                      Horarios de Cocina y Atención
+                    </h4>
+                    <p className="text-xs text-zinc-200 bg-zinc-950/60 p-3 rounded-lg border border-zinc-800 leading-relaxed whitespace-pre-line font-medium">
+                      {selectedRestaurant.businessHours || "No especificados"}
+                    </p>
+                  </div>
+
+                  {/* Environments */}
+                  <div className="space-y-1.5">
+                    <h4 className="text-xs font-bold text-zinc-400 flex items-center gap-2 uppercase tracking-wider">
+                      <MapPin className="w-3.5 h-3.5 text-indigo-400" />
+                      Ambientes del Local
+                    </h4>
+                    <div className="flex flex-wrap gap-1.5">
+                      {selectedRestaurant.environments.length > 0 ? (
+                        selectedRestaurant.environments.map((env) => (
+                          <span
+                            key={env}
+                            className="px-2.5 py-1 bg-zinc-800 border border-zinc-700/80 text-[10px] font-bold text-zinc-300 rounded-md"
+                          >
+                            {env}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-xs text-zinc-500">Ningún ambiente seleccionado</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Bot Configurations */}
+                  <div className="space-y-2">
+                    <h4 className="text-xs font-bold text-zinc-400 flex items-center gap-2 uppercase tracking-wider">
+                      <Zap className="w-3.5 h-3.5 text-indigo-400" />
+                      Canales y Permisos Habilitados
+                    </h4>
+                    <div className="bg-zinc-950/45 border border-zinc-800/80 rounded-lg p-3.5 space-y-2.5">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-zinc-400">Transcripción notas de voz</span>
+                        <span className={`px-2 py-0.5 rounded font-black text-[9px] tracking-wider ${
+                          selectedRestaurant.audioTranscription 
+                            ? "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20" 
+                            : "bg-zinc-800 text-zinc-500"
+                        }`}>
+                          {selectedRestaurant.audioTranscription ? "ACTIVO" : "DESACTIVADO"}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-zinc-400">Atención de llamadas (IVR)</span>
+                        <span className={`px-2 py-0.5 rounded font-black text-[9px] tracking-wider ${
+                          selectedRestaurant.voiceCalls 
+                            ? "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20" 
+                            : "bg-zinc-800 text-zinc-500"
+                        }`}>
+                          {selectedRestaurant.voiceCalls ? "ACTIVO" : "DESACTIVADO"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Date Submitted if onboarding */}
+                  {selectedRestaurant.submittedAt && (
+                    <div className="text-[10px] text-zinc-500 font-medium flex items-center gap-1.5 pt-1">
+                      <Calendar className="w-3.5 h-3.5 text-zinc-600" />
+                      Enviado por el cliente el {new Date(selectedRestaurant.submittedAt).toLocaleString("es-AR")}
+                    </div>
+                  )}
+
+                </div>
+
+                {/* Right Side details */}
+                <div className="space-y-5">
+                  {/* Admin Numbers */}
+                  <div className="space-y-2">
+                    <h4 className="text-xs font-bold text-zinc-400 flex items-center gap-2 uppercase tracking-wider">
+                      <Phone className="w-3.5 h-3.5 text-indigo-400" />
+                      Teléfonos de Administradores
+                    </h4>
+                    <div className="space-y-1.5 max-h-[140px] overflow-y-auto pr-1">
+                      {selectedRestaurant.adminNumbers.map((phone) => (
+                        <div key={phone} className="flex items-center justify-between p-2 bg-zinc-950/60 border border-zinc-800 rounded-lg text-xs font-mono text-zinc-300">
+                          <span>{phone}</span>
+                          <div className="flex gap-1.5 shrink-0">
+                            {/* Copy button */}
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(phone);
+                                toast.success("Copiado", { description: "Número de teléfono copiado." });
+                              }}
+                              className="p-1 text-zinc-400 hover:text-zinc-200 transition-colors cursor-pointer"
+                              title="Copiar número"
+                            >
+                              <Copy className="w-3.5 h-3.5" />
+                            </button>
+                            {/* WhatsApp Direct link */}
+                            <a
+                              href={`https://wa.me/${phone}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-1 text-emerald-500 hover:text-emerald-400 transition-colors cursor-pointer"
+                              title="Chatear por WhatsApp"
+                            >
+                              <MessageSquare className="w-3.5 h-3.5" />
+                            </a>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Comments / Considerations */}
+                  <div className="space-y-1.5">
+                    <h4 className="text-xs font-bold text-zinc-400 flex items-center gap-2 uppercase tracking-wider">
+                      <MessageSquare className="w-3.5 h-3.5 text-indigo-400" />
+                      Detalles a tener en cuenta / Comentarios
+                    </h4>
+                    <div className="text-xs text-zinc-200 bg-amber-500/5 p-3 rounded-lg border border-amber-500/25 leading-relaxed min-h-[90px] max-h-[150px] overflow-y-auto scrollbar-thin">
+                      {selectedRestaurant.comments ? (
+                        <p className="italic font-medium">"{selectedRestaurant.comments}"</p>
+                      ) : (
+                        <span className="text-zinc-500 italic">Sin comentarios adicionales cargados.</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Carta / Menú Base - Full Width Section */}
+              <div className="mt-6 border-t border-zinc-800 pt-5 space-y-2">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-zinc-400 flex items-center gap-2 uppercase tracking-wider">
+                    <FileText className="w-3.5 h-3.5 text-indigo-400" />
+                    Carta / Menú
+                  </h4>
+
+                  {selectedRestaurant.menu && !selectedRestaurant.menu.startsWith("[CARTA EN PDF ADJUNTADA]") && (
+                    <button
+                      onClick={() => {
+                        if (selectedRestaurant.menu) {
+                          navigator.clipboard.writeText(selectedRestaurant.menu);
+                          toast.success("Carta copiada", { description: "El texto de la carta se copió al portapapeles." });
+                        }
+                      }}
+                      className="inline-flex items-center gap-1.5 text-[10px] text-zinc-400 hover:text-white uppercase font-bold tracking-wider border border-zinc-800 bg-zinc-950/40 px-2.5 py-1 rounded transition-colors cursor-pointer"
+                    >
+                      <Copy className="w-3 h-3" />
+                      Copiar Carta
+                    </button>
+                  )}
+                </div>
+
+                {selectedRestaurant.menu ? (
+                  selectedRestaurant.menu.startsWith("[CARTA EN PDF ADJUNTADA]") ? (
+                    /* PDF Mode */
+                    (() => {
+                      const lines = selectedRestaurant.menu.split("\n");
+                      const nameLine = lines.find((l: string) => l.startsWith("Archivo:"));
+                      const sizeLine = lines.find((l: string) => l.startsWith("Tamaño:"));
+                      const pdfNameStr = nameLine ? nameLine.replace("Archivo: ", "") : "carta.pdf";
+                      const pdfSizeStr = sizeLine ? sizeLine.replace("Tamaño: ", "") : "Desconocido";
+                      
+                      return (
+                        <div className="border border-indigo-500/20 bg-indigo-600/5 rounded-xl p-4 flex items-center justify-between gap-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-lg bg-indigo-600/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shrink-0 shadow-inner">
+                              <FileText className="w-5 h-5 stroke-[1.8]" />
+                            </div>
+                            <div className="space-y-0.5 text-left">
+                              <h5 className="text-xs font-bold text-zinc-200">
+                                {pdfNameStr}
+                              </h5>
+                              <p className="text-[10px] text-zinc-400">
+                                PDF Adjunto · Tamaño: {pdfSizeStr}
+                              </p>
+                            </div>
+                          </div>
+                          <Button
+                            onClick={() => {
+                              toast.info("Descarga Iniciada (Simulada)", {
+                                description: `Descargando archivo de carta: "${pdfNameStr}"`,
+                              });
+                            }}
+                            className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold h-9 px-3.5 text-xs flex items-center gap-1.5 cursor-pointer"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                            Descargar
+                          </Button>
+                        </div>
+                      );
+                    })()
+                  ) : (
+                    /* Text Mode */
+                    <pre className="bg-zinc-950 border border-zinc-800 p-4 rounded-lg font-mono text-[11px] leading-relaxed text-zinc-300 max-h-[220px] overflow-y-auto whitespace-pre-wrap select-text scrollbar-thin">
+                      {selectedRestaurant.menu}
+                    </pre>
+                  )
+                ) : (
+                  <div className="text-xs text-zinc-500 italic p-4 border border-dashed border-zinc-800 rounded-lg text-center">
+                    No se cargó menú ni carta.
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Actions Footer */}
+              <div className="flex justify-between items-center gap-3 pt-5 border-t border-zinc-800 mt-6 shrink-0">
+                <Button
+                  onClick={() => handleExportJSON(selectedRestaurant)}
+                  variant="secondary"
+                  className="h-10 px-4 text-xs font-bold text-zinc-400 hover:text-white flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  Exportar Ficha (.json)
+                </Button>
+
+                <div className="flex gap-3">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => setIsDetailsOpen(false)}
+                    className="text-zinc-400 hover:text-zinc-200 h-10 px-4 cursor-pointer text-xs font-bold"
+                  >
+                    Cerrar
+                  </Button>
+                  
+                  <Button
+                    onClick={() => {
+                      handleToggleStatus(selectedRestaurant.id);
+                      setSelectedRestaurant(prev => prev ? { ...prev, status: prev.status === "ACTIVO" ? "PAUSADO" : "ACTIVO" } : null);
+                    }}
+                    className={`font-bold h-10 px-4 text-xs flex items-center gap-1.5 cursor-pointer ${
+                      selectedRestaurant.status === "ACTIVO"
+                        ? "bg-rose-600 hover:bg-rose-500 text-white shadow-rose-900/30"
+                        : "bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-900/30"
+                    }`}
+                  >
+                    {selectedRestaurant.status === "ACTIVO" ? (
+                      <>
+                        <Pause className="w-3.5 h-3.5" />
+                        Suspender Bot
+                      </>
+                    ) : (
+                      <>
+                        <Play className="w-3.5 h-3.5" />
+                        Activar Bot
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ADD NEW RESTAURANT MODAL (MANTENIDO) */}
       <AnimatePresence>
         {isAddModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            {/* Modal backdrop */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -510,7 +1096,6 @@ export default function AdminDashboard() {
               className="absolute inset-0 bg-black/80 backdrop-blur-sm"
             />
 
-            {/* Modal body */}
             <motion.div
               initial={{ scale: 0.95, opacity: 0, y: 15 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -534,7 +1119,6 @@ export default function AdminDashboard() {
               </div>
 
               <form onSubmit={handleAddRestaurant} className="space-y-4">
-                {/* Business name */}
                 <div className="space-y-1.5">
                   <Label htmlFor="new_name">Nombre de fantasía *</Label>
                   <Input
@@ -545,14 +1129,12 @@ export default function AdminDashboard() {
                     value={newName}
                     onChange={(e) => {
                       setNewName(e.target.value);
-                      // Generar slug sugerido
                       setNewSlug(e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, "-"));
                     }}
                     className="bg-zinc-950 border-zinc-800 text-sm h-11 text-zinc-100"
                   />
                 </div>
 
-                {/* Slug */}
                 <div className="space-y-1.5">
                   <Label htmlFor="new_slug">Slug identificador *</Label>
                   <div className="relative">
@@ -571,7 +1153,6 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
-                {/* Admin Phone numbers */}
                 <div className="space-y-1.5">
                   <Label htmlFor="new_admins">Teléfonos de Administradores (separados por coma) *</Label>
                   <Input
@@ -588,7 +1169,6 @@ export default function AdminDashboard() {
                   </p>
                 </div>
 
-                {/* Environments Selector */}
                 <div className="space-y-1.5">
                   <Label>Ambientes del local</Label>
                   <div className="flex gap-2">
@@ -612,7 +1192,6 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
-                {/* Buttons footer */}
                 <div className="flex justify-end gap-3 pt-4 border-t border-zinc-800 mt-6">
                   <Button
                     type="button"
@@ -624,7 +1203,7 @@ export default function AdminDashboard() {
                   </Button>
                   <Button
                     type="submit"
-                    className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold h-11 px-5 shadow-lg active:scale-98"
+                    className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold h-11 px-5 shadow-lg active:scale-98 cursor-pointer"
                   >
                     Activar Bruno
                   </Button>
