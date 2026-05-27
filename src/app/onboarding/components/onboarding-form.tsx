@@ -113,7 +113,7 @@ export const OnboardingForm: React.FC = () => {
     try {
       const response = await submitOnboarding(data);
       if (response.success) {
-        // Guardar submission en localStorage
+        // Guardar submission en localStorage y en el backend real
         try {
           const submissionsStr = localStorage.getItem("bruno_onboarding_submissions_v1");
           let submissions = [];
@@ -125,7 +125,7 @@ export const OnboardingForm: React.FC = () => {
             name: data.business_name,
             slug: data.business_name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
             environments: data.environments,
-            status: "ACTIVO",
+            status: "ACTIVO" as const,
             reservationsToday: 0,
             adminNumbers: data.admin_numbers,
             audioTranscription: data.audio_transcription,
@@ -137,6 +137,15 @@ export const OnboardingForm: React.FC = () => {
           };
           submissions.push(newSubmission);
           localStorage.setItem("bruno_onboarding_submissions_v1", JSON.stringify(submissions));
+
+          // Persistir en el backend real
+          await fetch("/api/submissions", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify(newSubmission)
+          });
         } catch (err) {
           console.error("Error saving submission:", err);
         }

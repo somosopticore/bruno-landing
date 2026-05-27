@@ -142,32 +142,64 @@ export default function AdminDashboard() {
       setIsAuthenticated(true);
     }
 
-    // Cargar submissions de localStorage
-    try {
-      const submissionsStr = localStorage.getItem("bruno_onboarding_submissions_v1");
-      if (submissionsStr) {
-        const submissions = JSON.parse(submissionsStr);
-        const formattedSubmissions = submissions.map((sub: any) => ({
-          id: sub.id,
-          name: sub.name,
-          slug: sub.slug,
-          environments: sub.environments || [],
-          status: sub.status || "ACTIVO",
-          reservationsToday: sub.reservationsToday || 0,
-          adminNumbers: sub.adminNumbers || [],
-          audioTranscription: sub.audioTranscription ?? true,
-          voiceCalls: sub.voiceCalls ?? false,
-          businessHours: sub.businessHours || "No especificado",
-          menu: sub.menu || "",
-          comments: sub.comments || "",
-          submittedAt: sub.submittedAt || new Date().toISOString(),
-          isUserSubmitted: true,
-        }));
-        setRestaurants([...INITIAL_RESTAURANTS, ...formattedSubmissions]);
+    // Cargar submissions del backend real
+    const fetchSubmissions = async () => {
+      try {
+        const res = await fetch("/api/submissions");
+        if (res.ok) {
+          const submissions = await res.json();
+          const formattedSubmissions = submissions.map((sub: any) => ({
+            id: sub.id,
+            name: sub.name,
+            slug: sub.slug,
+            environments: sub.environments || [],
+            status: sub.status || "ACTIVO",
+            reservationsToday: sub.reservationsToday || 0,
+            adminNumbers: sub.adminNumbers || [],
+            audioTranscription: sub.audioTranscription ?? true,
+            voiceCalls: sub.voiceCalls ?? false,
+            businessHours: sub.businessHours || "No especificado",
+            menu: sub.menu || "",
+            comments: sub.comments || "",
+            submittedAt: sub.submittedAt || new Date().toISOString(),
+            isUserSubmitted: true,
+          }));
+          setRestaurants([...INITIAL_RESTAURANTS, ...formattedSubmissions]);
+          return;
+        }
+      } catch (err) {
+        console.error("Error al cargar submissions del backend real:", err);
       }
-    } catch (err) {
-      console.error("Error al cargar submissions de localStorage:", err);
-    }
+
+      // Fallback a localStorage
+      try {
+        const submissionsStr = localStorage.getItem("bruno_onboarding_submissions_v1");
+        if (submissionsStr) {
+          const submissions = JSON.parse(submissionsStr);
+          const formattedSubmissions = submissions.map((sub: any) => ({
+            id: sub.id,
+            name: sub.name,
+            slug: sub.slug,
+            environments: sub.environments || [],
+            status: sub.status || "ACTIVO",
+            reservationsToday: sub.reservationsToday || 0,
+            adminNumbers: sub.adminNumbers || [],
+            audioTranscription: sub.audioTranscription ?? true,
+            voiceCalls: sub.voiceCalls ?? false,
+            businessHours: sub.businessHours || "No especificado",
+            menu: sub.menu || "",
+            comments: sub.comments || "",
+            submittedAt: sub.submittedAt || new Date().toISOString(),
+            isUserSubmitted: true,
+          }));
+          setRestaurants([...INITIAL_RESTAURANTS, ...formattedSubmissions]);
+        }
+      } catch (err) {
+        console.error("Error al cargar submissions de localStorage:", err);
+      }
+    };
+
+    fetchSubmissions();
   }, []);
 
   // Acciones de autenticación
@@ -238,7 +270,7 @@ export default function AdminDashboard() {
           const nextStatus = r.status === "ACTIVO" ? "PAUSADO" : "ACTIVO";
           const nextReservations = nextStatus === "PAUSADO" ? 0 : Math.floor(Math.random() * 20) + 10;
           
-          // Sincronizar con localStorage si es onboarding
+          // Sincronizar con localStorage y backend real
           try {
             const submissionsStr = localStorage.getItem("bruno_onboarding_submissions_v1");
             if (submissionsStr) {
@@ -254,6 +286,18 @@ export default function AdminDashboard() {
           } catch (err) {
             console.error("Error al actualizar estado en localStorage:", err);
           }
+
+          // Persistir en backend real
+          fetch("/api/submissions", {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              id,
+              fields: { status: nextStatus }
+            })
+          }).catch(err => console.error("Error al actualizar estado en backend:", err));
 
           toast(nextStatus === "ACTIVO" ? "Bot Reanudado" : "Bot Suspendido", {
             description: `Se ha cambiado el estado de ${r.name} a ${nextStatus}.`,
@@ -301,7 +345,7 @@ export default function AdminDashboard() {
       isUserSubmitted: true
     };
 
-    // Guardar en localStorage también para simular la BD manual
+    // Guardar en localStorage y en backend real
     try {
       const submissionsStr = localStorage.getItem("bruno_onboarding_submissions_v1");
       let submissions = [];
@@ -310,6 +354,15 @@ export default function AdminDashboard() {
       }
       submissions.push(newClient);
       localStorage.setItem("bruno_onboarding_submissions_v1", JSON.stringify(submissions));
+
+      // Persistir en backend real
+      fetch("/api/submissions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(newClient)
+      }).catch(err => console.error("Error al guardar en backend:", err));
     } catch (err) {
       console.error(err);
     }
@@ -331,7 +384,7 @@ export default function AdminDashboard() {
   const handleDeleteRestaurant = (id: string, name: string) => {
     setRestaurants(restaurants.filter((r) => r.id !== id));
     
-    // Borrar de localStorage si corresponde
+    // Borrar de localStorage y de backend real
     try {
       const submissionsStr = localStorage.getItem("bruno_onboarding_submissions_v1");
       if (submissionsStr) {
@@ -342,6 +395,11 @@ export default function AdminDashboard() {
     } catch (err) {
       console.error(err);
     }
+
+    // Borrar de backend real
+    fetch(`/api/submissions?id=${id}`, {
+      method: "DELETE"
+    }).catch(err => console.error("Error al borrar del backend:", err));
 
     toast.error("Cliente Eliminado", {
       description: `Se dio de baja a ${name} del sistema central.`,
