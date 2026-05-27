@@ -2,7 +2,9 @@
   {
     "id": "test_1779850005412",
     "name": "GitHub DB Test",
-    "test": true
+    "test": true,
+    "deleted": true,
+    "deletedAt": "2026-05-27T04:25:02.937Z"
   },
   {
     "id": "1779851268059",
