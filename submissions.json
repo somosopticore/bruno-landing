@@ -3,5 +3,26 @@
     "id": "test_1779850005412",
     "name": "GitHub DB Test",
     "test": true
+  },
+  {
+    "id": "1779851268059",
+    "name": "Restaurante Playa fresca",
+    "slug": "restaurante-playa-fresca",
+    "environments": [
+      "Salón",
+      "Exterior",
+      "Patio"
+    ],
+    "status": "ACTIVO",
+    "reservationsToday": 0,
+    "adminNumbers": [
+      "5493516561711"
+    ],
+    "audioTranscription": true,
+    "voiceCalls": false,
+    "businessHours": "Martes a domingo 20 a 05",
+    "menu": "[CARTA EN PDF ADJUNTADA]\nArchivo: menu_moyo_test.pdf\nTamaño: 21 KB\n\nEl sistema de inteligencia artificial de Bruno procesará este documento PDF para responder a todas las consultas de tus comensales sobre platos, ingredientes, precios, alérgenos y opciones especiales.",
+    "comments": "EStamos listos",
+    "submittedAt": "2026-05-27T03:07:48.059Z"
   }
 ]
