@@ -161,21 +161,38 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Datos del restaurante incompletos" }, { status: 400 });
     }
 
+    // Incluir el token en el objeto a persistir para poder contar sus usos
+    const submissionToSave = { ...newSubmission, token };
+
     if (isProduction || TOKEN) {
       const { data, sha } = await getGithubData();
+
+      // Contar usos del token en la base de datos (ignorando locales eliminados)
+      const tokenUsageCount = data.filter((item: any) => item.token === token && !item.deleted).length;
+      if (tokenUsageCount >= 5) {
+        return NextResponse.json({ error: "El enlace de invitación ha expirado o ya fue utilizado." }, { status: 403 });
+      }
+
       // Eliminar duplicado si existe
-      const filtered = data.filter((item: any) => item.id !== newSubmission.id);
-      const updated = [...filtered, newSubmission];
+      const filtered = data.filter((item: any) => item.id !== submissionToSave.id);
+      const updated = [...filtered, submissionToSave];
       
       await writeGithubData(updated, sha);
-      return NextResponse.json({ success: true, data: newSubmission });
+      return NextResponse.json({ success: true, data: submissionToSave });
     } else {
       const data = readLocalData();
-      const filtered = data.filter((item: any) => item.id !== newSubmission.id);
-      const updated = [...filtered, newSubmission];
+
+      // Contar usos del token en la base de datos local
+      const tokenUsageCount = data.filter((item: any) => item.token === token && !item.deleted).length;
+      if (tokenUsageCount >= 5) {
+        return NextResponse.json({ error: "El enlace de invitación ha expirado o ya fue utilizado." }, { status: 403 });
+      }
+
+      const filtered = data.filter((item: any) => item.id !== submissionToSave.id);
+      const updated = [...filtered, submissionToSave];
       
       writeLocalData(updated);
-      return NextResponse.json({ success: true, data: newSubmission });
+      return NextResponse.json({ success: true, data: submissionToSave });
     }
   } catch (error: any) {
     console.error("Submissions POST error:", error);
