@@ -19,5 +19,26 @@
     "menu": "[CARTA EN PDF ADJUNTADA]\nArchivo: menu_moyo_test.pdf\nTamaño: 21 KB\n\nEl sistema de inteligencia artificial de Bruno procesará este documento PDF para responder a todas las consultas de tus comensales sobre platos, ingredientes, precios, alérgenos y opciones especiales.",
     "comments": "EStamos listos",
     "submittedAt": "2026-05-27T03:07:48.059Z"
+  },
+  {
+    "id": "1779859496257",
+    "name": "asd",
+    "slug": "asd",
+    "environments": [
+      "Salón",
+      "Exterior"
+    ],
+    "status": "ACTIVO",
+    "reservationsToday": 0,
+    "adminNumbers": [
+      "12312412332"
+    ],
+    "audioTranscription": true,
+    "voiceCalls": false,
+    "businessHours": "martes a jueves 20 a 21",
+    "menu": "wadasssssssssssssssssssssssssssssssssssssssssssss",
+    "comments": "",
+    "submittedAt": "2026-05-27T05:24:56.258Z",
+    "token": "OPT-R8TFS4X6"
   }
 ]
