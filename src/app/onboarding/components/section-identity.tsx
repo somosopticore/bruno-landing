@@ -41,7 +41,7 @@ export const SectionIdentity: React.FC = () => {
 
       <div className="space-y-2">
         <div className="flex justify-between items-center">
-          <Label htmlFor="business_name">Nombre de fantasía de tu local</Label>
+          <Label htmlFor="business_name">Nombre de tu local</Label>
           <span className="text-[10px] font-mono text-text-muted font-bold">
             {businessName.length} / 80
           </span>
