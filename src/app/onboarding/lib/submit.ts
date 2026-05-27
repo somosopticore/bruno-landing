@@ -16,7 +16,7 @@ export async function submitOnboarding(data: unknown) {
     };
   }
 
-  // En producción, aquí se guardaría en base de datos o despacharía webhooks/Telegram notifications.
+  // En producción, aquí se guardaría en base de datos o despacharía webhooks/Telegram or WhatsApp notifications.
   console.log("Onboarding completado con éxito para:", result.data.business_name);
 
   return {

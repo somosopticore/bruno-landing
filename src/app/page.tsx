@@ -325,14 +325,14 @@ export default function BrunoLanding() {
 
     // Human contact / telegram
     if (text.match(/(humano|persona|contacto|hablar con alguien|atencion|soporte|ayuda|dueño|encargado|telefono|tel)/)) {
-      return "Entiendo perfectamente. Ya le avisé al encargado por Telegram. Te va a estar respondiendo en este mismo chat en un minuto. Mientras tanto, decime si querés ver el menú. 📱";
+      return "Entiendo perfectamente. Ya le avisé al encargado por Telegram o WhatsApp. Te va a estar respondiendo en este mismo chat en un minuto. Mientras tanto, decime si querés ver el menú. 📱";
     }
 
     // Dynamic looping / fallback counter triggers PNL hook
     if (currentFallbackCount === 0) {
       return "Esa es una buena pregunta. Como asistente inteligente me adapto al 100% a la carta y reglas de tu restaurante. De hecho, puedo responder cosas complejas sobre ingredientes o alérgenos en segundos. Si querés ver cómo Bruno maneja tus reservas reales y responde a tus clientes en vivo, te invito a dejarnos tus datos abajo para armar tu simulación personalizada. ¿Te gustaría que probemos simulando una reserva acá? 🍷";
     } else if (currentFallbackCount === 1) {
-      return "Veo que querés poner a prueba mis límites, ¡me encanta! 😉 Bruno está diseñado sobre modelos de IA de última generación. No solo responde texto: gestiona turnos de mesa, asienta reservas en tu planilla en tiempo real y detecta al instante si un cliente necesita ser derivado a un humano enviándote una alerta por Telegram. Para ver el panel de control y cómo funciona todo por detrás, déjanos tu contacto en el formulario. Te va a sugerir un nuevo nivel de control.";
+      return "Veo que querés poner a prueba mis límites, ¡me encanta! 😉 Bruno está diseñado sobre modelos de IA de última generación. No solo responde texto: gestiona turnos de mesa, asienta reservas en tu planilla en tiempo real y detecta al instante si un cliente necesita ser derivado a un humano enviándote una alerta por Telegram o WhatsApp. Para ver el panel de control y cómo funciona todo por detrás, déjanos tu contacto en el formulario. Te va a sugerir un nuevo nivel de control.";
     } else {
       return "Ahí tocaste un punto clave del servicio. La respuesta completa a eso depende de la configuración de tu salón, y esa es la magia: no hay dos Brunos iguales, cada uno se entrena a medida. Para descubrir cómo se vería Bruno con el menú y los horarios de tu restaurante en WhatsApp, podés agendar una videollamada de 5 minutos haciendo click en el botón 'Agendar videollamada' al lado del formulario. ¿Te sumás a la demo virtual? 🚀";
     }
@@ -798,7 +798,7 @@ export default function BrunoLanding() {
               Vos cocinás, Bruno atiende
             </h3>
             <p className="text-sm text-text-secundario leading-relaxed max-w-[300px]">
-              Bruno responde 24/7, agenda las reservas en tu planilla digital y te notifica a tu Telegram personal si hay alguna alerta crítica.
+              Bruno responde 24/7, agenda las reservas en tu planilla digital y te notifica a tu Telegram o WhatsApp personal si hay alguna alerta crítica.
             </p>
           </div>
         </div>
@@ -924,7 +924,7 @@ export default function BrunoLanding() {
                 </h3>
 
                 <p className="text-sm text-text-secundario leading-relaxed mb-6">
-                  Bruno no solo responde mensajes. Escanea opiniones en Google Maps de tu negocio en tiempo real. Responde de forma automática reseñas de 5 estrellas, y te alerta en Telegram ante malas reseñas con un borrador sugerido.
+                  Bruno no solo responde mensajes. Escanea opiniones en Google Maps de tu negocio en tiempo real. Responde de forma automática reseñas de 5 estrellas, y te alerta en Telegram o WhatsApp ante malas reseñas con un borrador sugerido.
                 </p>
 
                 <ul className="space-y-4 text-xs text-text-secundario mb-8">
@@ -934,7 +934,7 @@ export default function BrunoLanding() {
                   </li>
                   <li className="flex items-start gap-2.5">
                     <Check className="w-4 h-4 text-acento-primario shrink-0" />
-                    <span>Detección y alerta de reseñas negativas vía Telegram.</span>
+                    <span>Detección y alerta de reseñas negativas vía Telegram o WhatsApp.</span>
                   </li>
                   <li className="flex items-start gap-2.5">
                     <Check className="w-4 h-4 text-acento-primario shrink-0" />
@@ -1386,7 +1386,7 @@ const faqData = [
   },
   {
     q: "¿Y si Bruno no sabe responder algo?",
-    a: "Bruno está entrenado para detectar cuando una consulta requiere intervención humana. En esos casos te avisa por Telegram al momento y le dice al cliente que en un momento le respondés vos.",
+    a: "Bruno está entrenado para detectar cuando una consulta requiere intervención humana. En esos casos te avisa por Telegram o WhatsApp al momento y le dice al cliente que en un momento le respondés vos.",
   },
   {
     q: "¿Funciona con mi número de WhatsApp actual?",
@@ -1410,7 +1410,7 @@ const faqData = [
   },
   {
     q: "¿Qué hago con las reseñas negativas que Bruno responde?",
-    a: "Bruno NO responde reseñas negativas sin tu aprobación. Lo que hace es: detectarlas en Google Maps, alertarte por Telegram, y proponerte un borrador de respuesta. Vos aprobás antes de que se publique.",
+    a: "Bruno NO responde reseñas negativas sin tu aprobación. Lo que hace es: detectarlas en Google Maps, alertarte por Telegram o WhatsApp, y proponerte un borrador de respuesta. Vos aprobás antes de que se publique.",
   },
   {
     q: "¿Cuál es el costo real de Meta WhatsApp Business?",
