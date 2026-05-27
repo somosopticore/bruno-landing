@@ -3,8 +3,8 @@
 import React, { useState, useEffect } from "react";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useRouter } from "next/navigation";
-import { Sparkles, Save, CheckCircle2, AlertTriangle, Loader2, ArrowLeft } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Sparkles, Save, CheckCircle2, AlertTriangle, Loader2, ArrowLeft, Lock } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 
@@ -23,6 +23,8 @@ import { Button } from "@/components/ui/button";
 
 export const OnboardingForm: React.FC = () => {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const token = searchParams.get("token") || "";
   const [activeStep, setActiveStep] = useState<string>("identity");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -135,17 +137,31 @@ export const OnboardingForm: React.FC = () => {
             comments: data.comments || "",
             submittedAt: new Date().toISOString(),
           };
-          submissions.push(newSubmission);
-          localStorage.setItem("bruno_onboarding_submissions_v1", JSON.stringify(submissions));
 
           // Persistir en el backend real
-          await fetch("/api/submissions", {
+          const apiRes = await fetch("/api/submissions", {
             method: "POST",
             headers: {
               "Content-Type": "application/json"
             },
-            body: JSON.stringify(newSubmission)
+            body: JSON.stringify({
+              ...newSubmission,
+              token: token // Inyección del token extraído de la URL
+            })
           });
+
+          if (apiRes.status === 403) {
+            toast.error("Enlace inválido o expirado", {
+              description: "El enlace de invitación ha expirado o ya fue utilizado.",
+              duration: 5000,
+            });
+            setIsSubmitting(false);
+            return;
+          }
+
+          // Si el servidor lo acepta, guardamos localmente también
+          submissions.push(newSubmission);
+          localStorage.setItem("bruno_onboarding_submissions_v1", JSON.stringify(submissions));
         } catch (err) {
           console.error("Error saving submission:", err);
         }
@@ -172,6 +188,40 @@ export const OnboardingForm: React.FC = () => {
       setIsSubmitting(false);
     }
   };
+
+  if (!token) {
+    return (
+      <div className="min-h-[70vh] w-full flex items-center justify-center px-4 relative overflow-hidden bg-zinc-950/20">
+        {/* Glows de fondo */}
+        <div className="absolute top-[20%] left-[20%] w-[350px] h-[350px] rounded-full bg-indigo-600/5 blur-[100px] pointer-events-none" />
+        <div className="absolute bottom-[20%] right-[20%] w-[350px] h-[350px] rounded-full bg-rose-500/5 blur-[100px] pointer-events-none" />
+
+        <div className="w-full max-w-[500px] bg-zinc-900/60 border border-zinc-800 rounded-2xl p-8 backdrop-blur-xl shadow-2xl text-center space-y-6 relative z-10">
+          <div className="mx-auto h-16 w-16 bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center rounded-2xl shadow-inner animate-pulse">
+            <Lock className="w-7 h-7" />
+          </div>
+          
+          <div className="space-y-2">
+            <h2 className="text-xl font-bold text-zinc-100 tracking-wide">
+              Acceso Protegido
+            </h2>
+            <p className="text-sm text-zinc-400 leading-relaxed font-medium">
+              Para registrar tu restaurante en Bruno, necesitas un enlace de invitación válido emitido por <span className="text-acento-primario font-bold">Opticore</span>. Si eres cliente, por favor solicita tu enlace a tu asesor.
+            </p>
+          </div>
+
+          <div className="border-t border-zinc-800/80 pt-6">
+            <Link
+              href="/"
+              className="inline-flex items-center justify-center px-5 py-2.5 rounded-lg bg-zinc-800 hover:bg-zinc-700/80 text-zinc-200 hover:text-white font-bold text-xs uppercase tracking-wider transition-all duration-200 w-full"
+            >
+              Volver a la página principal
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <FormProvider {...methods}>

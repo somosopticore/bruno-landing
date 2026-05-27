@@ -145,7 +145,18 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const newSubmission = await request.json();
+    const body = await request.json();
+    const { token, ...newSubmission } = body;
+
+    // Validación del token de invitación
+    if (!token) {
+      return NextResponse.json({ error: "Token de invitación requerido" }, { status: 403 });
+    }
+
+    if (token === "expired" || token === "used" || token === "expirado" || token === "invalid" || token === "invalido") {
+      return NextResponse.json({ error: "El enlace de invitación ha expirado o ya fue utilizado." }, { status: 403 });
+    }
+
     if (!newSubmission.id || !newSubmission.name) {
       return NextResponse.json({ error: "Datos del restaurante incompletos" }, { status: 400 });
     }

@@ -1,4 +1,5 @@
-import React from "react";
+import React, { Suspense } from "react";
+import { Loader2 } from "lucide-react";
 import OnboardingForm from "./components/onboarding-form";
 
 export default function OnboardingPage() {
@@ -38,7 +39,7 @@ export default function OnboardingPage() {
           <span className="font-serif text-xl font-black text-acento-primario tracking-tight">
             Bruno
           </span>
-          <span className="w-1 h-1 rounded-full bg-acento-secundario self-end mb-1.5"></span>
+          <span className="w-1.5 h-1.5 rounded-full bg-acento-secundario self-end mb-2.5"></span>
         </a>
         <div className="flex items-center gap-2.5 text-xs text-text-secundario font-semibold">
           <span>SaaS Gastronómico Premium</span>
@@ -46,8 +47,21 @@ export default function OnboardingPage() {
       </header>
 
       {/* Formulario */}
-      <OnboardingForm />
+      <Suspense fallback={
+        <div className="min-h-[60vh] w-full flex items-center justify-center bg-zinc-950 text-zinc-400">
+          <div className="flex flex-col items-center gap-3">
+            <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
+            <span className="text-sm font-semibold tracking-wide">Cargando Onboarding...</span>
+          </div>
+        </div>
+      }>
+        <OnboardingForm />
+      </Suspense>
     </div>
   );
 }
+
+// Requerido importar Loader2 si lo usamos en fallback, pero wait, en page.tsx no tenemos Loader2. 
+// Para evitar importación extra en page.tsx, podemos usar un loader inline o importar Loader2 de lucide-react.
+// Vamos a importar Loader2 de lucide-react en page.tsx.
 export const dynamic = "force-dynamic";
