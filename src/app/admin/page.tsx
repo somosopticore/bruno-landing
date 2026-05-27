@@ -28,7 +28,8 @@ import {
   Mic,
   Calendar,
   Loader2,
-  FileText
+  FileText,
+  Link2
 } from "lucide-react";
 import { toast, Toaster } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -126,6 +127,9 @@ export default function AdminDashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"TODOS" | "ACTIVO" | "PAUSADO" | "PAPELERA">("TODOS");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+  const [generatedInviteUrl, setGeneratedInviteUrl] = useState("");
+  const [generatedToken, setGeneratedToken] = useState("");
 
   // Estados para nuevo restaurante manual
   const [newName, setNewName] = useState("");
@@ -515,6 +519,21 @@ export default function AdminDashboard() {
     });
   };
 
+  const handleGenerateInvite = () => {
+    const rand = Math.random().toString(36).substring(2, 10).toUpperCase();
+    const token = `OPT-${rand}`;
+    const url = `${window.location.origin}/onboarding?token=${token}`;
+    
+    setGeneratedToken(token);
+    setGeneratedInviteUrl(url);
+    setIsInviteModalOpen(true);
+    
+    navigator.clipboard.writeText(url);
+    toast.success("Enlace generado y copiado", {
+      description: `El link con token ${token} se copió al portapapeles.`,
+    });
+  };
+
   const toggleEnvironmentSelection = (env: string) => {
     if (selectedEnvironments.includes(env)) {
       setSelectedEnvironments(selectedEnvironments.filter((e) => e !== env));
@@ -675,13 +694,24 @@ export default function AdminDashboard() {
             </p>
           </div>
 
-          <Button
-            onClick={() => setIsAddModalOpen(true)}
-            className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold h-11 px-5 shadow-[0_4px_15px_rgba(99,102,241,0.35)] active:scale-98 cursor-pointer"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Agregar Restaurante
-          </Button>
+          <div className="flex flex-wrap items-center gap-3 self-end sm:self-center">
+            <Button
+              onClick={handleGenerateInvite}
+              variant="secondary"
+              className="border border-zinc-800 hover:border-zinc-700 text-zinc-300 hover:text-white font-bold h-11 px-5 flex items-center gap-2 cursor-pointer transition-all duration-200"
+            >
+              <Link2 className="w-4 h-4 text-indigo-400" />
+              Generar Invitación
+            </Button>
+
+            <Button
+              onClick={() => setIsAddModalOpen(true)}
+              className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold h-11 px-5 shadow-[0_4px_15px_rgba(99,102,241,0.35)] active:scale-98 cursor-pointer"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Agregar Restaurante
+            </Button>
+          </div>
         </div>
 
         {/* METRICS ROW (KPI Cards) */}
@@ -1450,6 +1480,91 @@ export default function AdminDashboard() {
                   </Button>
                 </div>
               </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* GENERATE INVITE LINK MODAL */}
+      <AnimatePresence>
+        {isInviteModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsInviteModalOpen(false)}
+              className="absolute inset-0 bg-black/85 backdrop-blur-sm"
+            />
+
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 15 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 15 }}
+              className="relative w-full max-w-[480px] bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl overflow-hidden p-6 z-10"
+            >
+              <button
+                onClick={() => setIsInviteModalOpen(false)}
+                className="absolute top-4 right-4 text-zinc-400 hover:text-zinc-200 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="space-y-2 mb-6">
+                <div className="h-10 w-10 bg-indigo-600/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center rounded-xl shadow-inner mb-4">
+                  <Link2 className="w-5 h-5" />
+                </div>
+                <h3 className="font-serif text-2xl font-bold text-white tracking-tight">
+                  Enlace de Invitación Generado
+                </h3>
+                <p className="text-xs text-zinc-400 leading-relaxed">
+                  Este link permitirá a tu cliente acceder de forma segura al formulario de onboarding de Bruno y registrar su restaurante.
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label>Token de seguridad</Label>
+                  <div className="bg-zinc-950 border border-zinc-800 rounded-lg p-3 font-mono text-sm text-indigo-400 font-bold tracking-wider">
+                    {generatedToken}
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label>Enlace de Onboarding</Label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      readOnly
+                      value={generatedInviteUrl}
+                      className="flex-1 bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-xs font-mono text-zinc-300 focus:outline-none"
+                    />
+                    <Button
+                      onClick={() => {
+                        navigator.clipboard.writeText(generatedInviteUrl);
+                        toast.success("Enlace copiado", { description: "Link de invitación copiado al portapapeles." });
+                      }}
+                      className="bg-zinc-800 hover:bg-zinc-700 text-zinc-100 font-bold px-3 text-xs flex items-center gap-1 cursor-pointer shrink-0"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                      Copiar
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-indigo-500/5 border border-indigo-500/10 rounded-lg text-[10px] text-zinc-400 leading-relaxed">
+                  💡 <strong>Información importante:</strong> Este enlace es válido para registrar hasta <strong>5 restaurantes</strong> (oportunidades) en el sistema. Una vez alcanzado ese límite, se desactivará automáticamente.
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-5 border-t border-zinc-800 mt-6">
+                <Button
+                  onClick={() => setIsInviteModalOpen(false)}
+                  className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold h-10 px-5 shadow-lg active:scale-98 cursor-pointer text-xs"
+                >
+                  Cerrar y Compartir
+                </Button>
+              </div>
             </motion.div>
           </div>
         )}
