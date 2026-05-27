@@ -478,7 +478,7 @@ export default function BrunoLanding() {
             </a>
           </nav>
           <a
-            href="#contacto"
+            href="/onboarding"
             className="px-5 py-2.5 bg-transparent border border-border-sutil rounded-lg text-xs font-bold uppercase tracking-wider text-acento-primario hover:bg-bg-hover hover:border-acento-primario hover:scale-105 transition-all duration-200 focus:outline-none shadow-md"
           >
             Probar Demo Gratis
@@ -505,7 +505,7 @@ export default function BrunoLanding() {
 
             <div className="w-full sm:w-auto flex flex-col sm:flex-row items-stretch sm:items-center gap-4 mb-8">
               <a
-                href="#contacto"
+                href="/onboarding"
                 className="px-8 py-4 bg-acento-primario text-bg-primary font-bold text-center rounded-lg shadow-[0_4px_20px_rgba(193,154,91,0.3)] transition-cta hover-cta flex items-center justify-center gap-2 focus:outline-none"
               >
                 Quiero a Bruno en mi restaurante
@@ -1321,7 +1321,7 @@ export default function BrunoLanding() {
                   </a>
                 </li>
                 <li>
-                  <a href="#contacto" className="hover:text-text-primario transition-colors">Contacto</a>
+                  <a href="/onboarding" className="hover:text-text-primario transition-colors">Onboarding</a>
                 </li>
               </ul>
             </div>
