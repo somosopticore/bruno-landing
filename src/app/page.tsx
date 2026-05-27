@@ -431,25 +431,21 @@ export default function BrunoLanding() {
         }),
       });
 
-      const data = await response.json();
-
-      if (response.ok) {
-        setFormStatus("success");
-        window.location.href = waUrl;
-      } else {
-        setFormStatus("error");
-        setServerErrorMessage(data.error || "El servidor de recepción no respondió correctamente. Redirigiendo a WhatsApp...");
-        setTimeout(() => {
-          window.location.href = waUrl;
-        }, 1500);
+      // Intentamos parsear por si hay información extra, pero priorizamos la redirección
+      try {
+        await response.json();
+      } catch {
+        // Ignorar errores de parseo
       }
+
+      // En cualquier caso (éxito o error del webhook), marcamos como success para mostrar la tarjeta de confirmación
+      // si el usuario regresa a la pestaña del navegador, y realizamos la redirección inmediata a WhatsApp
+      setFormStatus("success");
+      window.location.href = waUrl;
     } catch (error) {
-      console.error(error);
-      setFormStatus("error");
-      setServerErrorMessage("Error de conexión. Redirigiendo a WhatsApp...");
-      setTimeout(() => {
-        window.location.href = waUrl;
-      }, 1500);
+      console.error("Error en conexión de contacto:", error);
+      setFormStatus("success");
+      window.location.href = waUrl;
     }
   };
 
