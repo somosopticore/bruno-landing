@@ -15,6 +15,7 @@ export const SectionIdentity: React.FC = () => {
 
   const businessName = watch("business_name") || "";
   const nameError = errors.business_name?.message as string;
+  const tablesError = errors.total_tables?.message as string;
 
   return (
     <motion.section
@@ -63,6 +64,33 @@ export const SectionIdentity: React.FC = () => {
           {nameError && (
             <p className="text-xs text-error font-medium" role="alert">
               {nameError}
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex justify-between items-center">
+          <Label htmlFor="total_tables">Cantidad aproximada de mesas (Capacidad del salón)</Label>
+        </div>
+        
+        <Input
+          id="total_tables"
+          type="number"
+          min="1"
+          placeholder="Ej: 25"
+          error={!!tablesError}
+          {...register("total_tables", { valueAsNumber: true })}
+          className="h-12 text-base"
+        />
+
+        <div className="flex justify-between items-start">
+          <p className="text-xs text-text-muted font-medium">
+            Esto ayuda a configurar el límite de reservas simultáneas.
+          </p>
+          {tablesError && (
+            <p className="text-xs text-error font-medium" role="alert">
+              {tablesError}
             </p>
           )}
         </div>

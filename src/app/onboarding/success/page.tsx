@@ -56,7 +56,7 @@ export default function OnboardingSuccessPage() {
 
           {/* Actions */}
           <div className="flex flex-col gap-3 pt-2">
-            <Link href="https://wa.me/message/opticore" target="_blank" passHref className="w-full">
+            <Link href="https://wa.me/5493517302559?text=Hola!%20Tengo%20una%20consulta%20sobre%20el%20onboarding%20de%20Bruno." target="_blank" passHref className="w-full">
               <Button className="w-full h-12 flex items-center justify-center gap-2 font-bold text-xs uppercase tracking-wider">
                 <MessageSquare className="w-4 h-4 text-bg-primary fill-bg-primary" />
                 Chatear con soporte en WhatsApp

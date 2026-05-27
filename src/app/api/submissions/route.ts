@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
+import { INITIAL_RESTAURANTS } from "@/lib/initial-restaurants";
 
 // Configuración de persistencia real usando GitHub como base de datos serverless
 const TOKEN = process.env.GITHUB_TOKEN;
@@ -89,20 +90,19 @@ function writeLocalData(data: any) {
 
 export async function GET() {
   try {
-    // En producción o si poseemos el TOKEN, usamos la base de datos persistente en GitHub
     if (isProduction || TOKEN) {
       const { data, sha } = await getGithubData();
       
-      // Auto-pruning de locales eliminados hace más de 30 días
       const now = new Date();
       let hasChanges = false;
       const pruned = data.filter((item: any) => {
         if (item.deleted && item.deletedAt) {
           const msDiff = now.getTime() - new Date(item.deletedAt).getTime();
           const daysDiff = msDiff / (1000 * 60 * 60 * 24);
-          if (daysDiff > 30) {
+          const isInitial = INITIAL_RESTAURANTS.some((r) => r.id === item.id);
+          if (daysDiff > 30 && !isInitial) {
             hasChanges = true;
-            return false; // Eliminar definitivamente
+            return false;
           }
         }
         return true;
@@ -114,7 +114,6 @@ export async function GET() {
       
       return NextResponse.json(pruned);
     } else {
-      // Desarrollo local fallback a archivo
       const data = readLocalData();
       
       const now = new Date();
@@ -123,7 +122,8 @@ export async function GET() {
         if (item.deleted && item.deletedAt) {
           const msDiff = now.getTime() - new Date(item.deletedAt).getTime();
           const daysDiff = msDiff / (1000 * 60 * 60 * 24);
-          if (daysDiff > 30) {
+          const isInitial = INITIAL_RESTAURANTS.some((r) => r.id === item.id);
+          if (daysDiff > 30 && !isInitial) {
             hasChanges = true;
             return false;
           }
@@ -211,23 +211,19 @@ export async function PUT(request: Request) {
 
     if (isProduction || TOKEN) {
       const { data, sha } = await getGithubData();
-      const updated = data.map((item: any) => {
-        if (item.id === id) {
-          return { ...item, ...fields };
-        }
-        return item;
-      });
+      const exists = data.some((item: any) => item.id === id);
+      const updated = exists
+        ? data.map((item: any) => (item.id === id ? { ...item, ...fields } : item))
+        : [...data, { id, ...fields }];
 
       await writeGithubData(updated, sha);
       return NextResponse.json({ success: true });
     } else {
       const data = readLocalData();
-      const updated = data.map((item: any) => {
-        if (item.id === id) {
-          return { ...item, ...fields };
-        }
-        return item;
-      });
+      const exists = data.some((item: any) => item.id === id);
+      const updated = exists
+        ? data.map((item: any) => (item.id === id ? { ...item, ...fields } : item))
+        : [...data, { id, ...fields }];
 
       writeLocalData(updated);
       return NextResponse.json({ success: true });
@@ -253,16 +249,12 @@ export async function DELETE(request: Request) {
       let updated;
       
       if (force) {
-        // Borrado permanente
         updated = data.filter((item: any) => item.id !== id);
       } else {
-        // Soft delete: marcar como eliminado
-        updated = data.map((item: any) => {
-          if (item.id === id) {
-            return { ...item, deleted: true, deletedAt: new Date().toISOString() };
-          }
-          return item;
-        });
+        const exists = data.some((item: any) => item.id === id);
+        updated = exists
+          ? data.map((item: any) => (item.id === id ? { ...item, deleted: true, deletedAt: new Date().toISOString() } : item))
+          : [...data, { id, deleted: true, deletedAt: new Date().toISOString() }];
       }
       
       await writeGithubData(updated, sha);
@@ -274,12 +266,10 @@ export async function DELETE(request: Request) {
       if (force) {
         updated = data.filter((item: any) => item.id !== id);
       } else {
-        updated = data.map((item: any) => {
-          if (item.id === id) {
-            return { ...item, deleted: true, deletedAt: new Date().toISOString() };
-          }
-          return item;
-        });
+        const exists = data.some((item: any) => item.id === id);
+        updated = exists
+          ? data.map((item: any) => (item.id === id ? { ...item, deleted: true, deletedAt: new Date().toISOString() } : item))
+          : [...data, { id, deleted: true, deletedAt: new Date().toISOString() }];
       }
       
       writeLocalData(updated);

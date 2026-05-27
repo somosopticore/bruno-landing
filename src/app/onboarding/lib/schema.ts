@@ -8,6 +8,10 @@ export const onboardingSchema = z.object({
     .min(2, "Ingresá el nombre del local")
     .max(80, "El nombre no puede superar los 80 caracteres"),
 
+  total_tables: z
+    .number({ message: "Ingresá un número válido" })
+    .min(1, "Debe haber al menos 1 mesa"),
+
   // Sección 2 — Distribución y carta
   // Nota: Cambiado a z.string() en lugar de z.enum para soportar custom tags agregados dinámicamente
   environments: z.array(z.string()),

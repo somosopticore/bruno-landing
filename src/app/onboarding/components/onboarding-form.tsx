@@ -33,6 +33,7 @@ export const OnboardingForm: React.FC = () => {
     mode: "onBlur",
     defaultValues: {
       business_name: "",
+      total_tables: "" as any,
       environments: ["Salón", "Exterior", "Patio"],
       menu: "",
       business_hours: "",
@@ -83,12 +84,19 @@ export const OnboardingForm: React.FC = () => {
 
   // Calcular de forma proactiva qué secciones están completas y válidas
   const bName = watch("business_name") || "";
+  const bTotalTables = watch("total_tables");
   const bMenu = watch("menu") || "";
   const bHours = watch("business_hours") || "";
   const bAdmins = watch("admin_numbers") || [];
 
   const completedSteps: Record<string, boolean> = {
-    identity: !errors.business_name && bName.trim().length >= 2,
+    identity:
+      !errors.business_name &&
+      bName.trim().length >= 2 &&
+      !errors.total_tables &&
+      bTotalTables !== undefined &&
+      !isNaN(Number(bTotalTables)) &&
+      Number(bTotalTables) >= 1,
     menu: !errors.menu && bMenu.trim().length >= 40,
     hours: !errors.business_hours && bHours.trim().length >= 10,
     permissions:
@@ -136,6 +144,7 @@ export const OnboardingForm: React.FC = () => {
             menu: data.menu,
             comments: data.comments || "",
             submittedAt: new Date().toISOString(),
+            total_tables: Number(data.total_tables),
           };
 
           // Persistir en el backend real
