@@ -29,6 +29,13 @@ export const onboardingSchema = z.object({
     .min(10, "Detallá días y horarios de cocina")
     .max(500, "El detalle de horarios no puede superar los 500 caracteres"),
 
+  accepts_events: z.boolean(),
+  event_details: z
+    .string()
+    .trim()
+    .max(1000, "El detalle de eventos no puede superar los 1000 caracteres")
+    .optional(),
+
   // Sección 4 — Canales y permisos
   admin_numbers: z
     .array(

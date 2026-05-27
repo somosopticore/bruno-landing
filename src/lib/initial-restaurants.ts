@@ -16,6 +16,8 @@ export interface Restaurant {
   deleted?: boolean;
   deletedAt?: string;
   total_tables?: number;
+  accepts_events?: boolean;
+  event_details?: string;
 }
 
 export const INITIAL_RESTAURANTS: Restaurant[] = [
@@ -33,6 +35,8 @@ export const INITIAL_RESTAURANTS: Restaurant[] = [
     menu: "[ENTRADAS]\n- Provoleta Moyo: Con tomates confitados, pesto de rúcula y almendras tostadas. $8.500\n- Empanada Criolla: De carne cortada a cuchillo, frita, bien jugosa. $2.200\n\n[PRINCIPALES]\n- Ojo de Bife 400g: Con papas rústicas y manteca de chimichurri. Cocción sugerida: a punto. $18.900\n- Ravioles de Cordero: Con salsa demiglace de hongos de pino y verdeo. $15.500\n\n[BEBIDAS & VINOS]\n- Malbec Gran Reserva Moyo (Copa / Botella): $3.500 / $14.000\n- Limonada casera con menta y jengibre: $3.000",
     comments: "Instalación estándar sin requerimientos especiales. Todo funcionando OK.",
     total_tables: 30,
+    accepts_events: true,
+    event_details: "Recibimos cumpleaños y eventos empresariales. Capacidad máxima: 80 personas. Ofrecemos menú de pasos o tapeo cerrado con reserva mínima de 15 personas. Se requiere seña del 30%.",
   },
   {
     id: "2",
@@ -48,6 +52,7 @@ export const INITIAL_RESTAURANTS: Restaurant[] = [
     menu: "[PIZZAS CLÁSICAS]\n- Muzzarella: Salsa de tomate, muzzarella, aceitunas. $7.200\n- Fugazzeta: Muzzarella, cebolla caramelizada, orégano. $7.800\n- Margarita: Muzzarella, rodajas de tomate, albahaca fresca. $8.000\n\n[CERVEZAS]\n- IPA Tirada Moyo (Pinta): $2.500\n- Golden Tirada Moyo (Pinta): $2.200",
     comments: "El cliente solicitó prioridad para reservas en mesas de Patio.",
     total_tables: 20,
+    accepts_events: false,
   },
   {
     id: "3",
@@ -63,6 +68,8 @@ export const INITIAL_RESTAURANTS: Restaurant[] = [
     menu: "[MINUTAS]\n- Milanesa Napolitana gigante con papas fritas (para compartir): $16.500\n- Suprema a la Suiza con puré: $13.900\n\n[POSTRES]\n- Flan Mixto (Con dulce de leche y crema): $3.000\n- Vigilante (Queso y dulce de membrillo o batata): $2.500",
     comments: "El administrador principal quiere notificaciones directas por cada reserva superior a 6 cubiertos.",
     total_tables: 45,
+    accepts_events: true,
+    event_details: "Aceptamos cumpleaños y reuniones familiares grandes. Se pueden reservar mesas largas de hasta 25 personas. Menú a la carta o parrillada familiar preestablecida.",
   },
   {
     id: "4",
@@ -78,5 +85,6 @@ export const INITIAL_RESTAURANTS: Restaurant[] = [
     menu: "[PLATITOS]\n- Buñuelos de acelga con alioli: $4.200\n- Croquetas de jamón crudo y muzzarella: $4.800\n\n[TRAGOS & VERMUT]\n- Vermut de la casa con sifón: $1.800\n- Negroni Lunfardo: $3.200",
     comments: "Servicio pausado temporalmente por reformas en el local.",
     total_tables: 15,
+    accepts_events: false,
   },
 ];

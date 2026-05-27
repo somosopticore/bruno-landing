@@ -37,6 +37,8 @@ export const OnboardingForm: React.FC = () => {
       environments: ["Salón", "Exterior", "Patio"],
       menu: "",
       business_hours: "",
+      accepts_events: false,
+      event_details: "",
       admin_numbers: [""],
       audio_transcription: true,
       voice_calls: false,
@@ -88,6 +90,8 @@ export const OnboardingForm: React.FC = () => {
   const bMenu = watch("menu") || "";
   const bHours = watch("business_hours") || "";
   const bAdmins = watch("admin_numbers") || [];
+  const bAcceptsEvents = watch("accepts_events");
+  const bEventDetails = watch("event_details") || "";
 
   const completedSteps: Record<string, boolean> = {
     identity:
@@ -98,7 +102,10 @@ export const OnboardingForm: React.FC = () => {
       !isNaN(Number(bTotalTables)) &&
       Number(bTotalTables) >= 1,
     menu: !errors.menu && bMenu.trim().length >= 40,
-    hours: !errors.business_hours && bHours.trim().length >= 10,
+    hours:
+      !errors.business_hours &&
+      bHours.trim().length >= 10 &&
+      (!bAcceptsEvents || (!errors.event_details && bEventDetails.trim().length >= 10)),
     permissions:
       !errors.admin_numbers &&
       bAdmins.length >= 1 &&
@@ -141,6 +148,8 @@ export const OnboardingForm: React.FC = () => {
             audioTranscription: data.audio_transcription,
             voiceCalls: data.voice_calls,
             businessHours: data.business_hours,
+            accepts_events: data.accepts_events,
+            event_details: data.event_details || "",
             menu: data.menu,
             comments: data.comments || "",
             submittedAt: new Date().toISOString(),

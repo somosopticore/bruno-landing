@@ -100,6 +100,8 @@ export default function AdminDashboard() {
             deleted: sub.deleted || false,
             deletedAt: sub.deletedAt || undefined,
             total_tables: sub.total_tables || undefined,
+            accepts_events: sub.accepts_events ?? false,
+            event_details: sub.event_details || undefined,
           });
         }
       });
@@ -1064,6 +1066,32 @@ export default function AdminDashboard() {
                       <p className="text-xs text-zinc-200 bg-zinc-950/60 px-3 py-2 rounded-lg border border-zinc-800 leading-relaxed font-mono font-bold">
                         {selectedRestaurant.total_tables} mesas
                       </p>
+                    </div>
+                  )}
+
+                  {/* Recepción de Eventos */}
+                  {selectedRestaurant.accepts_events !== undefined && (
+                    <div className="space-y-1.5">
+                      <h4 className="text-xs font-bold text-zinc-400 flex items-center gap-2 uppercase tracking-wider">
+                        <CalendarCheck className="w-3.5 h-3.5 text-indigo-400" />
+                        Recepción de Eventos / Cumpleaños
+                      </h4>
+                      <div className="bg-zinc-950/60 p-3 rounded-lg border border-zinc-800 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2 py-0.5 rounded font-black text-[9px] tracking-wider ${
+                            selectedRestaurant.accepts_events 
+                              ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" 
+                              : "bg-rose-500/10 text-rose-400 border border-rose-500/20"
+                          }`}>
+                            {selectedRestaurant.accepts_events ? "SÍ ACEPTA" : "NO ACEPTA"}
+                          </span>
+                        </div>
+                        {selectedRestaurant.accepts_events && selectedRestaurant.event_details && (
+                          <p className="text-xs text-zinc-300 leading-relaxed font-medium whitespace-pre-line border-t border-zinc-800/60 pt-2">
+                            {selectedRestaurant.event_details}
+                          </p>
+                        )}
+                      </div>
                     </div>
                   )}
 
