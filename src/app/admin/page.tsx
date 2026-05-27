@@ -52,6 +52,8 @@ interface Restaurant {
   comments?: string;
   submittedAt?: string;
   isUserSubmitted?: boolean;
+  deleted?: boolean;
+  deletedAt?: string;
 }
 
 const INITIAL_RESTAURANTS: Restaurant[] = [
@@ -122,7 +124,7 @@ export default function AdminDashboard() {
 
   const [restaurants, setRestaurants] = useState<Restaurant[]>(INITIAL_RESTAURANTS);
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"TODOS" | "ACTIVO" | "PAUSADO">("TODOS");
+  const [statusFilter, setStatusFilter] = useState<"TODOS" | "ACTIVO" | "PAUSADO" | "PAPELERA">("TODOS");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   // Estados para nuevo restaurante manual
@@ -163,6 +165,8 @@ export default function AdminDashboard() {
             comments: sub.comments || "",
             submittedAt: sub.submittedAt || new Date().toISOString(),
             isUserSubmitted: true,
+            deleted: sub.deleted || false,
+            deletedAt: sub.deletedAt || undefined,
           }));
           setRestaurants([...INITIAL_RESTAURANTS, ...formattedSubmissions]);
           return;
@@ -191,6 +195,8 @@ export default function AdminDashboard() {
             comments: sub.comments || "",
             submittedAt: sub.submittedAt || new Date().toISOString(),
             isUserSubmitted: true,
+            deleted: sub.deleted || false,
+            deletedAt: sub.deletedAt || undefined,
           }));
           setRestaurants([...INITIAL_RESTAURANTS, ...formattedSubmissions]);
         }
@@ -241,6 +247,13 @@ export default function AdminDashboard() {
       const matchesSearch =
         r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         r.slug.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      if (statusFilter === "PAPELERA") {
+        return r.deleted === true && matchesSearch;
+      }
+      
+      if (r.deleted) return false;
+      
       const matchesStatus = statusFilter === "TODOS" || r.status === statusFilter;
       return matchesSearch && matchesStatus;
     });
@@ -248,18 +261,22 @@ export default function AdminDashboard() {
 
   // KPIs calculados en tiempo real
   const activeCount = useMemo(() => {
-    return restaurants.filter((r) => r.status === "ACTIVO").length;
+    return restaurants.filter((r) => r.status === "ACTIVO" && !r.deleted).length;
   }, [restaurants]);
 
   const totalReservationsToday = useMemo(() => {
-    return restaurants.reduce((sum, r) => sum + r.reservationsToday, 0);
+    return restaurants.reduce((sum, r) => sum + (r.deleted ? 0 : r.reservationsToday), 0);
   }, [restaurants]);
 
   const iaEfficiency = useMemo(() => {
-    const active = restaurants.filter((r) => r.status === "ACTIVO");
+    const active = restaurants.filter((r) => r.status === "ACTIVO" && !r.deleted);
     if (active.length === 0) return "0.0%";
     const total = active.reduce((sum, r) => sum + (r.voiceCalls ? 99.6 : 99.2), 0);
     return `${(total / active.length).toFixed(1)}%`;
+  }, [restaurants]);
+
+  const deletedCount = useMemo(() => {
+    return restaurants.filter((r) => r.deleted).length;
   }, [restaurants]);
 
   // Acciones rápidas
@@ -382,9 +399,101 @@ export default function AdminDashboard() {
   };
 
   const handleDeleteRestaurant = (id: string, name: string) => {
-    setRestaurants(restaurants.filter((r) => r.id !== id));
+    const deletedTime = new Date().toISOString();
     
-    // Borrar de localStorage y de backend real
+    // Marcar como eliminado en el estado UI
+    setRestaurants((prev) =>
+      prev.map((r) => {
+        if (r.id === id) {
+          return { ...r, deleted: true, deletedAt: deletedTime };
+        }
+        return r;
+      })
+    );
+
+    // Marcar como eliminado en localStorage
+    try {
+      const submissionsStr = localStorage.getItem("bruno_onboarding_submissions_v1");
+      if (submissionsStr) {
+        const submissions = JSON.parse(submissionsStr);
+        const updated = submissions.map((sub: any) => {
+          if (sub.id === id) {
+            return { ...sub, deleted: true, deletedAt: deletedTime };
+          }
+          return sub;
+        });
+        localStorage.setItem("bruno_onboarding_submissions_v1", JSON.stringify(updated));
+      }
+    } catch (err) {
+      console.error(err);
+    }
+
+    // Soft delete en backend real
+    fetch(`/api/submissions?id=${id}`, {
+      method: "DELETE"
+    }).catch(err => console.error("Error al borrar del backend:", err));
+
+    toast.error("Restaurante enviado a la papelera", {
+      description: `Se movió a ${name} a la papelera por 30 días.`,
+    });
+  };
+
+  const handleRestoreRestaurant = (id: string, name: string) => {
+    // Restaurar en el estado UI
+    setRestaurants((prev) =>
+      prev.map((r) => {
+        if (r.id === id) {
+          const { deleted, deletedAt, ...rest } = r;
+          return { ...rest, status: "ACTIVO" } as Restaurant;
+        }
+        return r;
+      })
+    );
+
+    // Restaurar en localStorage
+    try {
+      const submissionsStr = localStorage.getItem("bruno_onboarding_submissions_v1");
+      if (submissionsStr) {
+        const submissions = JSON.parse(submissionsStr);
+        const updated = submissions.map((sub: any) => {
+          if (sub.id === id) {
+            const { deleted, deletedAt, ...rest } = sub;
+            return { ...rest, status: "ACTIVO" };
+          }
+          return sub;
+        });
+        localStorage.setItem("bruno_onboarding_submissions_v1", JSON.stringify(updated));
+      }
+    } catch (err) {
+      console.error(err);
+    }
+
+    // Persistir restauración en backend real
+    fetch("/api/submissions", {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        id,
+        fields: { deleted: false, deletedAt: null }
+      })
+    }).catch(err => console.error("Error al restaurar en backend:", err));
+
+    toast.success("Restaurante restaurado", {
+      description: `${name} ha sido reactivado y quitado de la papelera.`,
+    });
+  };
+
+  const handleForceDeleteRestaurant = (id: string, name: string) => {
+    if (!confirm(`¿Estás seguro de que deseas eliminar permanentemente a ${name}? Esta acción no se puede deshacer y borrará los datos para siempre.`)) {
+      return;
+    }
+
+    // Remover del estado UI
+    setRestaurants((prev) => prev.filter((r) => r.id !== id));
+
+    // Remover de localStorage
     try {
       const submissionsStr = localStorage.getItem("bruno_onboarding_submissions_v1");
       if (submissionsStr) {
@@ -396,13 +505,13 @@ export default function AdminDashboard() {
       console.error(err);
     }
 
-    // Borrar de backend real
-    fetch(`/api/submissions?id=${id}`, {
+    // Borrado definitivo en backend real (force=true)
+    fetch(`/api/submissions?id=${id}&force=true`, {
       method: "DELETE"
-    }).catch(err => console.error("Error al borrar del backend:", err));
+    }).catch(err => console.error("Error al borrar definitivamente del backend:", err));
 
-    toast.error("Cliente Eliminado", {
-      description: `Se dio de baja a ${name} del sistema central.`,
+    toast.error("Restaurante eliminado permanentemente", {
+      description: `${name} fue eliminado por completo de la base de datos.`,
     });
   };
 
@@ -633,7 +742,7 @@ export default function AdminDashboard() {
             />
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs text-zinc-400 font-semibold uppercase tracking-wider mr-1">Filtrar:</span>
             {(["TODOS", "ACTIVO", "PAUSADO"] as const).map((status) => (
               <button
@@ -648,6 +757,22 @@ export default function AdminDashboard() {
                 {status}
               </button>
             ))}
+            <button
+              onClick={() => setStatusFilter("PAPELERA")}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                statusFilter === "PAPELERA"
+                  ? "bg-rose-950/40 border border-rose-800 text-rose-300"
+                  : "bg-transparent text-zinc-400 hover:text-rose-400"
+              }`}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              PAPELERA
+              {deletedCount > 0 && (
+                <span className="bg-rose-500/20 text-rose-400 px-1.5 py-0.5 rounded text-[10px] font-mono font-bold">
+                  {deletedCount}
+                </span>
+              )}
+            </button>
           </div>
         </section>
 
@@ -661,6 +786,7 @@ export default function AdminDashboard() {
             <AnimatePresence mode="popLayout">
               {filteredRestaurants.map((client) => {
                 const isActive = client.status === "ACTIVO";
+                const isDeleted = client.deleted === true;
 
                 return (
                   <motion.div
@@ -671,7 +797,9 @@ export default function AdminDashboard() {
                     exit={{ opacity: 0, y: -10 }}
                     transition={{ duration: 0.25 }}
                   >
-                    <Card className="bg-zinc-900 border-zinc-800 hover:border-zinc-700 transition-all duration-200 relative overflow-hidden flex flex-col justify-between h-full group p-6">
+                    <Card className={`bg-zinc-900 border-zinc-800 hover:border-zinc-700 transition-all duration-200 relative overflow-hidden flex flex-col justify-between h-full group p-6 ${
+                      isDeleted ? "border-rose-950/40 opacity-90" : ""
+                    }`}>
                       
                       {/* Top Header Card */}
                       <div className="flex justify-between items-start gap-4">
@@ -685,6 +813,12 @@ export default function AdminDashboard() {
                                 Onboarding
                               </span>
                             )}
+                            {isDeleted && (
+                              <span className="px-2 py-0.5 bg-rose-500/10 border border-rose-500/20 text-[9px] font-bold text-rose-400 rounded flex items-center gap-1">
+                                <AlertTriangle className="w-2.5 h-2.5" />
+                                Papelera
+                              </span>
+                            )}
                           </div>
                           <div className="flex items-center gap-1.5 text-xs text-zinc-400 font-mono">
                             <span>/{client.slug}</span>
@@ -692,16 +826,29 @@ export default function AdminDashboard() {
                         </div>
 
                         {/* Status Badge */}
-                        <button
-                          onClick={() => handleToggleStatus(client.id)}
-                          className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
-                            isActive
-                              ? "bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20"
-                              : "bg-rose-500/10 border border-rose-500/30 text-rose-400 hover:bg-rose-500/20"
-                          }`}
-                        >
-                          {client.status}
-                        </button>
+                        {isDeleted ? (
+                          (() => {
+                            const days = client.deletedAt ? Math.ceil(30 - (new Date().getTime() - new Date(client.deletedAt).getTime()) / (1000 * 60 * 60 * 24)) : 30;
+                            const daysText = days > 0 ? `${days} días rest.` : "Expirado";
+                            return (
+                              <div className="px-2.5 py-1 rounded bg-rose-950/30 border border-rose-900/40 text-[9px] font-black text-rose-400 uppercase tracking-wider flex items-center gap-1 font-mono">
+                                <Clock className="w-3 h-3" />
+                                {daysText}
+                              </div>
+                            );
+                          })()
+                        ) : (
+                          <button
+                            onClick={() => handleToggleStatus(client.id)}
+                            className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+                              isActive
+                                ? "bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20"
+                                : "bg-rose-500/10 border border-rose-500/30 text-rose-400 hover:bg-rose-500/20"
+                            }`}
+                          >
+                            {client.status}
+                          </button>
+                        )}
                       </div>
 
                       {/* Content Section */}
@@ -723,11 +870,22 @@ export default function AdminDashboard() {
 
                         {/* Reservations Count */}
                         <div className="space-y-1">
-                          <span className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider block">Reservas de hoy</span>
-                          <span className="text-xl font-bold font-mono text-white flex items-baseline gap-1">
-                            {client.reservationsToday}
-                            <span className="text-[10px] font-sans font-normal text-zinc-500">agendadas</span>
-                          </span>
+                          {isDeleted ? (
+                            <>
+                              <span className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider block">Eliminado el</span>
+                              <span className="text-xs font-mono text-zinc-300 block">
+                                {client.deletedAt ? new Date(client.deletedAt).toLocaleDateString("es-AR") : "Desconocido"}
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider block">Reservas de hoy</span>
+                              <span className="text-xl font-bold font-mono text-white flex items-baseline gap-1">
+                                {client.reservationsToday}
+                                <span className="text-[10px] font-sans font-normal text-zinc-500">agendadas</span>
+                              </span>
+                            </>
+                          )}
                         </div>
                       </div>
 
@@ -746,50 +904,75 @@ export default function AdminDashboard() {
 
                         {/* Actions buttons */}
                         <div className="flex items-center gap-2 self-end sm:self-center">
-                          {/* Ver Ficha Detallada */}
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedRestaurant(client);
-                              setIsDetailsOpen(true);
-                            }}
-                            className="h-8 px-3 text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 hover:text-white cursor-pointer"
-                          >
-                            <Sliders className="w-3.5 h-3.5 text-indigo-400" />
-                            Ver Ficha
-                          </Button>
+                          {isDeleted ? (
+                            <>
+                              {/* Restore Button */}
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => handleRestoreRestaurant(client.id, client.name)}
+                                className="h-8 px-3 text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 hover:text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-500/20 cursor-pointer"
+                              >
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                                Restaurar
+                              </Button>
 
-                          {/* Toggle bot status button */}
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            onClick={() => handleToggleStatus(client.id)}
-                            className="h-8 px-3 text-[10px] font-black uppercase tracking-wider flex items-center gap-1 hover:text-white cursor-pointer"
-                          >
-                            {isActive ? (
-                              <>
-                                <Pause className="w-3 h-3 text-rose-500 fill-rose-500" />
-                                Suspender
-                              </>
-                            ) : (
-                              <>
-                                <Play className="w-3 h-3 text-emerald-500 fill-emerald-500" />
-                                Activar Bot
-                              </>
-                            )}
-                          </Button>
+                              {/* Force Delete Button */}
+                              <button
+                                onClick={() => handleForceDeleteRestaurant(client.id, client.name)}
+                                className="h-8 px-3 text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 border border-zinc-800 hover:border-rose-800 text-zinc-400 hover:text-rose-400 bg-zinc-950/40 hover:bg-rose-500/10 rounded-lg cursor-pointer transition-colors"
+                                aria-label="Eliminar permanentemente"
+                              >
+                                <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                                Borrar Permanente
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              {/* Ver Ficha Detallada */}
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedRestaurant(client);
+                                  setIsDetailsOpen(true);
+                                }}
+                                className="h-8 px-3 text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 hover:text-white cursor-pointer"
+                              >
+                                <Sliders className="w-3.5 h-3.5 text-indigo-400" />
+                                Ver Ficha
+                              </Button>
 
-                          {/* Delete bot button */}
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDeleteRestaurant(client.id, client.name)}
-                            className="h-8 w-8 p-0 text-zinc-500 hover:text-rose-500 hover:bg-rose-500/10 rounded-lg flex items-center justify-center cursor-pointer"
-                            aria-label="Dar de baja restaurante"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
+                              {/* Toggle bot status button */}
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => handleToggleStatus(client.id)}
+                                className="h-8 px-3 text-[10px] font-black uppercase tracking-wider flex items-center gap-1 hover:text-white cursor-pointer"
+                              >
+                                {isActive ? (
+                                  <>
+                                    <Pause className="w-3 h-3 text-rose-500 fill-rose-500" />
+                                    Suspender
+                                  </>
+                                ) : (
+                                  <>
+                                    <Play className="w-3 h-3 text-emerald-500 fill-emerald-500" />
+                                    Activar Bot
+                                  </>
+                                )}
+                              </Button>
+
+                              {/* Delete bot button */}
+                              <button
+                                onClick={() => handleDeleteRestaurant(client.id, client.name)}
+                                className="h-8 w-8 text-zinc-500 hover:text-rose-500 hover:bg-rose-500/10 rounded-lg flex items-center justify-center cursor-pointer transition-colors border border-transparent hover:border-rose-950"
+                                aria-label="Dar de baja restaurante"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </>
+                          )}
                         </div>
                       </div>
 

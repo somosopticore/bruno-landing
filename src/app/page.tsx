@@ -412,11 +412,14 @@ export default function BrunoLanding() {
     setFormStatus("submitting");
     setServerErrorMessage("");
 
-    try {
-      const cleanedWhatsapp = formValues.whatsapp.startsWith("+")
-        ? formValues.whatsapp
-        : `+54 ${formValues.whatsapp}`;
+    const cleanedWhatsapp = formValues.whatsapp.startsWith("+")
+      ? formValues.whatsapp
+      : `+54 ${formValues.whatsapp}`;
 
+    const waText = `Hola! Soy ${formValues.userName}. Quiero probar la demo de Bruno para mi restaurante. Mi email es ${formValues.email}.${formValues.mensaje ? ' Mensaje: ' + formValues.mensaje : ''}`;
+    const waUrl = `https://wa.me/5493517302559?text=${encodeURIComponent(waText)}`;
+
+    try {
       const response = await fetch("/api/contacto", {
         method: "POST",
         headers: {
@@ -432,14 +435,21 @@ export default function BrunoLanding() {
 
       if (response.ok) {
         setFormStatus("success");
+        window.location.href = waUrl;
       } else {
         setFormStatus("error");
-        setServerErrorMessage(data.error || "Hubo un error al enviar el formulario.");
+        setServerErrorMessage(data.error || "El servidor de recepción no respondió correctamente. Redirigiendo a WhatsApp...");
+        setTimeout(() => {
+          window.location.href = waUrl;
+        }, 1500);
       }
     } catch (error) {
       console.error(error);
       setFormStatus("error");
-      setServerErrorMessage("Error de conexión. Intentá de nuevo.");
+      setServerErrorMessage("Error de conexión. Redirigiendo a WhatsApp...");
+      setTimeout(() => {
+        window.location.href = waUrl;
+      }, 1500);
     }
   };
 

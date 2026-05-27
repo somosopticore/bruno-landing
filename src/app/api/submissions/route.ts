@@ -91,12 +91,51 @@ export async function GET() {
   try {
     // En producción o si poseemos el TOKEN, usamos la base de datos persistente en GitHub
     if (isProduction || TOKEN) {
-      const { data } = await getGithubData();
-      return NextResponse.json(data);
+      const { data, sha } = await getGithubData();
+      
+      // Auto-pruning de locales eliminados hace más de 30 días
+      const now = new Date();
+      let hasChanges = false;
+      const pruned = data.filter((item: any) => {
+        if (item.deleted && item.deletedAt) {
+          const msDiff = now.getTime() - new Date(item.deletedAt).getTime();
+          const daysDiff = msDiff / (1000 * 60 * 60 * 24);
+          if (daysDiff > 30) {
+            hasChanges = true;
+            return false; // Eliminar definitivamente
+          }
+        }
+        return true;
+      });
+      
+      if (hasChanges) {
+        await writeGithubData(pruned, sha);
+      }
+      
+      return NextResponse.json(pruned);
     } else {
       // Desarrollo local fallback a archivo
       const data = readLocalData();
-      return NextResponse.json(data);
+      
+      const now = new Date();
+      let hasChanges = false;
+      const pruned = data.filter((item: any) => {
+        if (item.deleted && item.deletedAt) {
+          const msDiff = now.getTime() - new Date(item.deletedAt).getTime();
+          const daysDiff = msDiff / (1000 * 60 * 60 * 24);
+          if (daysDiff > 30) {
+            hasChanges = true;
+            return false;
+          }
+        }
+        return true;
+      });
+      
+      if (hasChanges) {
+        writeLocalData(pruned);
+      }
+      
+      return NextResponse.json(pruned);
     }
   } catch (error: any) {
     console.error("Submissions GET error:", error);
@@ -175,6 +214,7 @@ export async function DELETE(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
+    const force = searchParams.get("force") === "true";
 
     if (!id) {
       return NextResponse.json({ error: "Falta id de restaurante" }, { status: 400 });
@@ -182,15 +222,39 @@ export async function DELETE(request: Request) {
 
     if (isProduction || TOKEN) {
       const { data, sha } = await getGithubData();
-      const filtered = data.filter((item: any) => item.id !== id);
+      let updated;
       
-      await writeGithubData(filtered, sha);
+      if (force) {
+        // Borrado permanente
+        updated = data.filter((item: any) => item.id !== id);
+      } else {
+        // Soft delete: marcar como eliminado
+        updated = data.map((item: any) => {
+          if (item.id === id) {
+            return { ...item, deleted: true, deletedAt: new Date().toISOString() };
+          }
+          return item;
+        });
+      }
+      
+      await writeGithubData(updated, sha);
       return NextResponse.json({ success: true });
     } else {
       const data = readLocalData();
-      const filtered = data.filter((item: any) => item.id !== id);
+      let updated;
       
-      writeLocalData(filtered);
+      if (force) {
+        updated = data.filter((item: any) => item.id !== id);
+      } else {
+        updated = data.map((item: any) => {
+          if (item.id === id) {
+            return { ...item, deleted: true, deletedAt: new Date().toISOString() };
+          }
+          return item;
+        });
+      }
+      
+      writeLocalData(updated);
       return NextResponse.json({ success: true });
     }
   } catch (error: any) {
