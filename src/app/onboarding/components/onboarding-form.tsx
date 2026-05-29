@@ -35,7 +35,9 @@ export const OnboardingForm: React.FC = () => {
       business_name: "",
       total_tables: "" as any,
       environments: ["Salón", "Exterior", "Patio"],
-      menu: "",
+      menu_text: "",
+      menu_pdf_name: "",
+      menu_pdf_size: "",
       business_hours: "",
       accepts_events: false,
       event_details: "",
@@ -87,7 +89,8 @@ export const OnboardingForm: React.FC = () => {
   // Calcular de forma proactiva qué secciones están completas y válidas
   const bName = watch("business_name") || "";
   const bTotalTables = watch("total_tables");
-  const bMenu = watch("menu") || "";
+  const bMenuText = watch("menu_text") || "";
+  const bMenuPdfName = watch("menu_pdf_name") || "";
   const bHours = watch("business_hours") || "";
   const bAdmins = watch("admin_numbers") || [];
   const bAcceptsEvents = watch("accepts_events");
@@ -101,7 +104,9 @@ export const OnboardingForm: React.FC = () => {
       bTotalTables !== undefined &&
       !isNaN(Number(bTotalTables)) &&
       Number(bTotalTables) >= 1,
-    menu: !errors.menu && bMenu.trim().length >= 40,
+    menu:
+      !errors.menu_text &&
+      (!!bMenuPdfName || bMenuText.trim().length >= 40),
     hours:
       !errors.business_hours &&
       bHours.trim().length >= 10 &&
@@ -150,7 +155,9 @@ export const OnboardingForm: React.FC = () => {
             businessHours: data.business_hours,
             accepts_events: data.accepts_events,
             event_details: data.event_details || "",
-            menu: data.menu,
+            menu: data.menu_pdf_name
+              ? `[CARTA EN PDF ADJUNTADA]\nArchivo: ${data.menu_pdf_name}\nTamaño: ${data.menu_pdf_size || "Desconocido"}\n\nEl sistema de inteligencia artificial de Bruno procesará este documento PDF para responder a todas las consultas de tus comensales sobre platos, ingredientes, precios, alérgenos y opciones especiales.`
+              : data.menu_text || "",
             comments: data.comments || "",
             submittedAt: new Date().toISOString(),
             total_tables: Number(data.total_tables),

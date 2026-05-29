@@ -26,23 +26,40 @@ export const SectionMenu: React.FC = () => {
   const [isDragActive, setIsDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const menuText = watch("menu") || "";
-  const menuError = errors.menu?.message as string;
+  const menuText = watch("menu_text") || "";
+  const pdfName = watch("menu_pdf_name") || "";
+  const pdfSize = watch("menu_pdf_size") || "";
+  const menuError = (errors.menu_text?.message as string) || (errors.menu_pdf_name?.message as string);
 
   // Restaurar estado del PDF si se está recuperando un borrador del localStorage
   useEffect(() => {
-    if (menuText.startsWith("[CARTA EN PDF ADJUNTADA]")) {
-      const lines = menuText.split("\n");
-      const nameLine = lines.find((l: string) => l.startsWith("Archivo:"));
-      const sizeLine = lines.find((l: string) => l.startsWith("Tamaño:"));
-      const fileName = nameLine ? nameLine.replace("Archivo: ", "") : "carta.pdf";
-      const fileSize = sizeLine ? sizeLine.replace("Tamaño: ", "") : "0 KB";
-      
+    if (pdfName) {
       setPdfFile({
-        name: fileName,
-        size: fileSize,
+        name: pdfName,
+        size: pdfSize || "Desconocido",
       });
       setActiveTab("pdf");
+    } else {
+      // Fallback para borradores antiguos
+      // @ts-ignore
+      const oldMenu = watch("menu") || "";
+      if (oldMenu.startsWith("[CARTA EN PDF ADJUNTADA]")) {
+        const lines = oldMenu.split("\n");
+        const nameLine = lines.find((l: string) => l.startsWith("Archivo:"));
+        const sizeLine = lines.find((l: string) => l.startsWith("Tamaño:"));
+        const fileName = nameLine ? nameLine.replace("Archivo: ", "") : "carta.pdf";
+        const fileSize = sizeLine ? sizeLine.replace("Tamaño: ", "") : "0 KB";
+        
+        setPdfFile({
+          name: fileName,
+          size: fileSize,
+        });
+        setValue("menu_pdf_name", fileName);
+        setValue("menu_pdf_size", fileSize);
+        setActiveTab("pdf");
+      } else if (oldMenu) {
+        setValue("menu_text", oldMenu);
+      }
     }
   }, []);
 
@@ -87,9 +104,11 @@ export const SectionMenu: React.FC = () => {
             });
             setUploadProgress(null);
             
-            // Rellenar el campo oculto de hook-form superando los 40 caracteres requeridos
-            setValue("menu", `[CARTA EN PDF ADJUNTADA]\nArchivo: ${file.name}\nTamaño: ${sizeStr}\n\nEl sistema de inteligencia artificial de Bruno procesará este documento PDF para responder a todas las consultas de tus comensales sobre platos, ingredientes, precios, alérgenos y opciones especiales.`);
-            trigger("menu");
+            // Rellenar los campos de hook-form
+            setValue("menu_pdf_name", file.name);
+            setValue("menu_pdf_size", sizeStr);
+            setValue("menu_text", ""); // Limpiar texto libre para no confundir
+            trigger(["menu_text", "menu_pdf_name"]);
             
             toast.success("Archivo cargado con éxito", {
               description: `"${file.name}" está listo para ser analizado por Bruno.`,
@@ -125,8 +144,9 @@ export const SectionMenu: React.FC = () => {
   const handleRemoveFile = (e: React.MouseEvent) => {
     e.stopPropagation();
     setPdfFile(null);
-    setValue("menu", "");
-    trigger("menu");
+    setValue("menu_pdf_name", "");
+    setValue("menu_pdf_size", "");
+    trigger(["menu_text", "menu_pdf_name"]);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -200,8 +220,9 @@ export const SectionMenu: React.FC = () => {
                 // Si eliminamos el PDF, vaciamos para forzar revalidación
                 if (pdfFile) {
                   setPdfFile(null);
-                  setValue("menu", "");
-                  trigger("menu");
+                  setValue("menu_pdf_name", "");
+                  setValue("menu_pdf_size", "");
+                  trigger(["menu_text", "menu_pdf_name"]);
                 }
               }}
               className={`flex items-center justify-center gap-1.5 py-1.5 px-3 text-[10px] font-bold uppercase tracking-wider rounded transition-all cursor-pointer ${
@@ -218,9 +239,9 @@ export const SectionMenu: React.FC = () => {
               onClick={() => {
                 setActiveTab("pdf");
                 // Si veníamos de texto y tenía datos, limpiamos para no confundir
-                if (!menuText.startsWith("[CARTA EN PDF ADJUNTADA]")) {
-                  setValue("menu", "");
-                  trigger("menu");
+                if (menuText) {
+                  setValue("menu_text", "");
+                  trigger(["menu_text", "menu_pdf_name"]);
                 }
               }}
               className={`flex items-center justify-center gap-1.5 py-1.5 px-3 text-[10px] font-bold uppercase tracking-wider rounded transition-all cursor-pointer ${
@@ -240,12 +261,12 @@ export const SectionMenu: React.FC = () => {
           <div className="space-y-2">
             <div className="relative">
               <Textarea
-                id="menu"
+                id="menu_text"
                 isMono
                 placeholder={menuPlaceholder}
                 error={!!menuError}
                 maxLength={15000}
-                {...register("menu")}
+                {...register("menu_text")}
                 className="min-h-[300px] text-xs font-mono leading-relaxed"
               />
               <div className="absolute bottom-3 right-3 text-[9px] font-mono text-text-muted bg-bg-primary/80 px-2 py-0.5 rounded">
