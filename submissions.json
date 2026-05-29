@@ -50,5 +50,29 @@
     "id": "2",
     "deleted": true,
     "deletedAt": "2026-05-27T07:09:53.008Z"
+  },
+  {
+    "id": "1780034084822",
+    "name": "123123123",
+    "slug": "123123123",
+    "environments": [
+      "Exterior",
+      "Salón"
+    ],
+    "status": "ACTIVO",
+    "reservationsToday": 0,
+    "adminNumbers": [
+      "5493516561711"
+    ],
+    "audioTranscription": true,
+    "voiceCalls": false,
+    "businessHours": "lunes a lunes 20 a 12",
+    "accepts_events": false,
+    "event_details": "",
+    "menu": "[CARTA EN PDF ADJUNTADA]\nArchivo: Guía Extensión Claude en Chrome + 10 casos de uso.pdf\nTamaño: 199 KB\n\nEl sistema de inteligencia artificial de Bruno procesará este documento PDF para responder a todas las consultas de tus comensales sobre platos, ingredientes, precios, alérgenos y opciones especiales.",
+    "comments": "",
+    "submittedAt": "2026-05-29T05:54:44.822Z",
+    "total_tables": 22,
+    "token": "OPT-Z102R4Q2"
   }
 ]
