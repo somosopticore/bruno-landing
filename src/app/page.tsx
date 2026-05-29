@@ -837,7 +837,7 @@ export default function BrunoLanding() {
                 </h3>
 
                 <p className="text-sm text-text-secundario leading-relaxed mb-6">
-                  El cliente que busca cenar quiere respuestas ya. Si tarda en recibir respuesta, vuelve a Instagram y le escribe a otro local. Bruno responde al instante, reduciendo el rebote de leads al 0%.
+                  El cliente que busca cenar quiere respuestas ya. Si tarda en recibir respuesta, vuelve a Instagram y le escribe a otro local. Bruno responde al instante —procesando mensajes de voz o de texto en múltiples idiomas—, reduciendo el rebote de leads al 0%.
                 </p>
 
                 <ul className="space-y-4 text-xs text-text-secundario mb-8">
@@ -847,7 +847,11 @@ export default function BrunoLanding() {
                   </li>
                   <li className="flex items-start gap-2.5">
                     <Check className="w-4 h-4 text-acento-primario shrink-0" />
-                    <span>Procesamiento de lenguaje natural avanzado.</span>
+                    <span>Comprensión de audios de voz con respuesta inmediata.</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <Check className="w-4 h-4 text-acento-primario shrink-0" />
+                    <span>Soporte multi-idioma (Español, Inglés y Portugués).</span>
                   </li>
                   <li className="flex items-start gap-2.5">
                     <Check className="w-4 h-4 text-acento-primario shrink-0" />
